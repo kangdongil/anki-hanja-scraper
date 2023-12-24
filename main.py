@@ -26,6 +26,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
+from hanja_encoder import hanja_to_url
 
 
 class SeleniumDriver(webdriver.Chrome):
@@ -69,13 +70,49 @@ browser = SeleniumDriver(
     ]
 )
 
-# Usage Example:
-# Navigates to a URL and waits for an element to load
-url = "https://www.naver.com"
-browser.get_await(url=url, locator=(By.ID, "newsstand"))
 
-# Captures a screenshot
-browser.get_screenshot_as_file("result.png")
+def get_hanja_data(hanja, browser):
+    """
+     Retrieve Hanja information from the Naver Hanja Dictionary website.
 
-# Quits the browser session
+    :param str hanja: The Hanja character to search for.
+    :param browser: An instance of the SeleniumDriver class for web automation.
+    :type browser: SeleniumDriver
+    :returns: A tuple containing Hanja character and its unique ID.
+    :rtype: tuple
+    """
+
+    # Fetch Hanja data from the Naver Dictionary website
+    encoded_hanja = hanja_to_url(hanja)
+    url = f"https://hanja.dict.naver.com/search?query={encoded_hanja}"
+    browser.get_await(url=url, locator=(By.ID, "searchPage_letter"))
+    hanja_obj = browser.find_elements(By.CSS_SELECTOR, ".row")[0].find_element(
+        By.CSS_SELECTOR, ".hanja_word .hanja_link"
+    )
+
+    # Extract the Hanja ID
+    if hanja_obj.text == hanja:
+        hanja_id = hanja_obj.get_attribute("href").split("/")[-1]
+
+    # Create a tuple with Hanja character and its unique ID
+    data = (hanja, hanja_id)
+
+    return data
+
+
+# Create an empty list to store the results
+results = []
+
+# List of Hanja characters to search for
+hanja_list = ["校", "敎", "九", "國", "軍"]
+
+# Iterate through the list of Hanja characters and fetch their data
+for hanja in hanja_list:
+    result = get_hanja_data(hanja, browser)
+    results.append(result)
+
+# Close the browser session to relase resources
 browser.quit()
+
+# Print the result
+print(results)
