@@ -78,24 +78,65 @@ def get_hanja_data(hanja, browser):
     :param str hanja: The Hanja character to search for.
     :param browser: An instance of the SeleniumDriver class for web automation.
     :type browser: SeleniumDriver
-    :returns: A tuple containing Hanja character and its unique ID.
+    :returns: A tuple containing Hanja character, its unique ID, and detailed information.
     :rtype: tuple
     """
 
-    # Fetch Hanja data from the Naver Dictionary website
+    # Step 1: Fetch Hanja data from the Naver Dictionary website
     encoded_hanja = hanja_to_url(hanja)
     url = f"https://hanja.dict.naver.com/search?query={encoded_hanja}"
     browser.get_await(url=url, locator=(By.ID, "searchPage_letter"))
+
     hanja_obj = browser.find_elements(By.CSS_SELECTOR, ".row")[0].find_element(
         By.CSS_SELECTOR, ".hanja_word .hanja_link"
     )
 
-    # Extract the Hanja ID
+    # Step 2: Extract the Hanja ID
     if hanja_obj.text == hanja:
         hanja_id = hanja_obj.get_attribute("href").split("/")[-1]
 
-    # Create a tuple with Hanja character and its unique ID
-    data = (hanja, hanja_id)
+    # Step 3: Access the Detail Webpage with Hanja ID
+    detailed_url = f"https://hanja.dict.naver.com/#/entry/ccko/{hanja_id}"
+    browser.get_await(url=detailed_url, locator=(By.CLASS_NAME, "component_entry"))
+
+    # Step 4: Save WebElements for repetitive calls
+    hanja_entry = browser.find_element(By.CSS_SELECTOR, ".component_entry")
+    hanja_infos = hanja_entry.find_elements(By.CSS_SELECTOR, ".entry_infos .info_item")
+
+    # Step 5: Extract Hanja Information from web crawling
+    hanja_meaning = hanja_entry.find_element(By.CSS_SELECTOR, ".entry_title .mean").text
+    hanja_radical = hanja_infos[0].find_element(By.TAG_NAME, "button").text
+    hanja_stroke_count = int(
+        hanja_entry.find_element(
+            By.CSS_SELECTOR, ".entry_infos .stroke span.word"
+        ).text[:-1]
+    )
+    if hanja_infos[1].find_element(By.CSS_SELECTOR, ".info_item .cate").text == "모양자":
+        formation_letters = (
+            hanja_infos[1].find_element(By.CSS_SELECTOR, ".desc").text.split(" + ")
+        )
+        formation_letter = tuple(seg[0] for seg in formation_letters)
+    else:
+        formation_letter = None
+    unicode = hanja_infos[2].find_element(By.CLASS_NAME, "desc").text
+    usage = tuple(
+        usage.text
+        for usage in hanja_entry.find_elements(
+            By.CSS_SELECTOR, ".entry_condition .unit_tooltip"
+        )
+    )
+    # Step 6: Create a dictionary with Hanja information
+    hanja_info = {
+        "Meaning": hanja_meaning,
+        "Radical": hanja_radical,
+        "Stroke Count": hanja_stroke_count,
+        "Formation Letter": formation_letter,
+        "Unicode": unicode,
+        "Usage": usage,
+    }
+
+    # Step 7: Create a tuple with Hanja character, its unique ID, and detailed information
+    data = (hanja, hanja_id, hanja_info)
 
     return data
 
