@@ -19,14 +19,14 @@ Methods:
     browser.get_await("https://example.com", (By.ID, 'element_id'))
 """
 
-
+import csv
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
-from hanja_encoder import hanja_to_url
+from hanja_tool import hanja_to_url
 
 
 class SeleniumDriver(webdriver.Chrome):
@@ -94,6 +94,8 @@ def get_hanja_data(hanja, browser):
     # Step 2: Extract the Hanja ID
     if hanja_obj.text == hanja:
         hanja_id = hanja_obj.get_attribute("href").split("/")[-1]
+    else:
+        return (hanja, None, None)
 
     # Step 3: Access the Detail Webpage with Hanja ID
     detailed_url = f"https://hanja.dict.naver.com/#/entry/ccko/{hanja_id}"
@@ -145,15 +147,76 @@ def get_hanja_data(hanja, browser):
 results = []
 
 # List of Hanja characters to search for
-hanja_list = ["校", "敎", "九", "國", "軍"]
+hanja_list = [
+    "校",
+    "敎",
+    "九",
+    "國",
+    "軍",
+    "金",
+    "南",
+    "女",
+    "年",
+    "大",
+    "東",
+    "六",  # this causing an error due to same shape but different unicode representation,
+    "萬",
+    "母",
+    "木",
+    "門",
+    "民",
+]
 
 # Iterate through the list of Hanja characters and fetch their data
-for hanja in hanja_list:
+for idx, hanja in enumerate(hanja_list, 1):
     result = get_hanja_data(hanja, browser)
     results.append(result)
+    if result[1] != None:
+        print(f"[{idx} / {len(hanja_list)}] {hanja}'s data has been fetched.")
+    else:
+        print(f"[{idx} / {len(hanja_list)}] Fetch Failed: {hanja}'")
 
 # Close the browser session to relase resources
 browser.quit()
+print("WebCrawling Finished.")
 
-# Print the result
-print(results)
+# Create a CSV file to store the results
+with open("hanja_result.csv", "w", newline="", encoding="utf-8") as csvfile:
+    # Define the CSV header
+    fieldnames = [
+        "hanja",
+        "meaning",
+        "radical",
+        "stroke_count",
+        "formation_letter",
+        "unicode",
+        "usage",
+        "naver_hanja_id",
+    ]
+
+    # Create a CSV writer
+    csvwriter = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+    # Write the header to the CSV file
+    csvwriter.writeheader()
+
+    # Iterate through the list of Hanja characters and Write the result to the CSV file
+    for idx, result in enumerate(results, 1):
+        if result[1] != None:
+            csvwriter.writerow(
+                {
+                    "hanja": result[0],
+                    "meaning": result[2]["Meaning"],
+                    "radical": result[2]["Radical"],
+                    "stroke_count": result[2]["Stroke Count"],
+                    "formation_letter": ", ".join(result[2]["Formation Letter"]),
+                    "unicode": result[2]["Unicode"],
+                    "usage": ", ".join(result[2]["Usage"]),
+                    "naver_hanja_id": result[1],
+                }
+            )
+            print(
+                f"[{idx} / {len(hanja_list)}] {result[0]}'s data has been written on csv file."
+            )
+        else:
+            print(f"[{idx} / {len(hanja_list)}] WriteRow Failed: {result[0]}'")
