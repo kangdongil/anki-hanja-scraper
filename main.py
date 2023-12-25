@@ -29,9 +29,23 @@ class SeleniumDriver(webdriver.Chrome):
     def __init__(self, options=None):
         chrome_options = webdriver.ChromeOptions()
         chrome_options.set_capability("pageLoadStrategy", "none")
-        if options:
-            for opt in options:
-                chrome_options.add_argument(opt)
+
+        # If options is None or an empty list, use the default options
+        if options is None:
+            default_options = [
+                "start-maximized",
+                "disable-infobars",
+                "--disable-extensions",
+                "--log-level=3",
+                "--headless",
+                "--disable-logging",
+                "--no-sandbox",
+                "--disable-gpu",
+            ]
+            options = default_options
+
+        for opt in options:
+            chrome_options.add_argument(opt)
 
         super().__init__(
             service=ChromeService(ChromeDriverManager().install()),
@@ -163,18 +177,7 @@ def main():
     :return: None
     """
     # Create a SeleniumDriver instance with common options
-    browser = SeleniumDriver(
-        [
-            "start-maximized",
-            "disable-infobars",
-            "--disable-extensions",
-            "--log-level=3",
-            "--headless",
-            "--disable-logging",
-            "--no-sandbox",
-            "--disable-gpu",
-        ]
-    )
+    browser = SeleniumDriver()
 
     # Create an empty list to store the results
     results = []
