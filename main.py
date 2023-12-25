@@ -1,24 +1,3 @@
-"""
-SeleniumDriver is a custom class based on Selenium's webdriver.Chrome for web automation.
-
-It simplifies the creation of WebDriver instances with common options and configurations,
-making it easy to set up a Chrome WebDriver for web scraping or automation.
-
-Attributes:
-    options (list): A list of additional command-line arguments for Chrome options.
-
-Methods:
-    get_await(url, locator):
-        Navigates to the specified URL and waits for an element to be present based on the provided locator.
-        Args:
-            url (str): The URL to navigate to.
-            locator (tuple): A tuple with two elements (By, value) specifying the element locator.
-                Example: (By.ID, 'element_id')
-
-# Use the instance to navigate to a URL and wait for an element to load
-    browser.get_await("https://example.com", (By.ID, 'element_id'))
-"""
-
 import csv
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -30,6 +9,23 @@ from hanja_tool import hanja_to_url
 
 
 class SeleniumDriver(webdriver.Chrome):
+    """
+    Custom class for Selenium WebDriver with common options and configurations.
+
+    :param options: A list of additional command-line arguments for Chrome options.
+    :type options: list
+
+    Methods:
+    get_await(url, locator):
+        Navigates to the specified URL and waits for an element to be present based on the provided locator.
+
+        :param url: The URL to navigate to.
+        :type url: str
+        :param locator: A tuple with two elements (By, value) specifying the element locator.
+                        Example: (By.ID, 'element_id')
+        :type locator: tuple
+    """
+
     def __init__(self, options=None):
         chrome_options = webdriver.ChromeOptions()
         chrome_options.set_capability("pageLoadStrategy", "none")
@@ -43,6 +39,15 @@ class SeleniumDriver(webdriver.Chrome):
         )
 
     def get_await(self, url, locator):
+        """
+        Navigate to the specified URL and wait for an element to be present based on the provided locator.
+
+        :param url: The URL to navigate to.
+        :type url: str
+        :param locator: A tuple with two elements (By, value) specifying the element locator.
+                        Example: (By.ID, 'element_id')
+        :type locator: tuple
+        """
         if not isinstance(locator, tuple) or len(locator) != 2:
             raise ValueError("Locator should be a tuple with 2 arguments (By, value)")
 
@@ -56,26 +61,12 @@ class SeleniumDriver(webdriver.Chrome):
             raise RuntimeError(f"Error waiting for element: {e}")
 
 
-# Create a SeleniumDriver instance with common options
-browser = SeleniumDriver(
-    [
-        "start-maximized",
-        "disable-infobars",
-        "--disable-extensions",
-        "--log-level=3",
-        "--headless",
-        "--disable-logging",
-        "--no-sandbox",
-        "--disable-gpu",
-    ]
-)
-
-
 def get_hanja_data(hanja, browser):
     """
-     Retrieve Hanja information from the Naver Hanja Dictionary website.
+    Retrieve Hanja information from the Naver Hanja Dictionary website.
 
-    :param str hanja: The Hanja character to search for.
+    :param hanja: The Hanja character to search for.
+    :type hanja: str
     :param browser: An instance of the SeleniumDriver class for web automation.
     :type browser: SeleniumDriver
     :returns: A tuple containing Hanja character, its unique ID, and detailed information.
@@ -143,45 +134,85 @@ def get_hanja_data(hanja, browser):
     return data
 
 
-# Create an empty list to store the results
-results = []
+def export_to_csv(fieldnames, data):
+    """
+    Export data to a CSV file.
 
-# List of Hanja characters to search for
-hanja_list = [
-    "校",
-    "敎",
-    "九",
-    "國",
-    "軍",
-    "金",
-    "南",
-    "女",
-    "年",
-    "大",
-    "東",
-    "六",  # this causing an error due to same shape but different unicode representation,
-    "萬",
-    "母",
-    "木",
-    "門",
-    "民",
-]
+    :param file_name: The name of the CSV file to export.
+    :type file_name: str
+    :param fieldnames: A list of field names for the CSV header.
+    :type fieldnames: list
+    :param data: A list of dictionaries containing data to be exported to the CSV file.
+    :type data: list
+    """
+    with open("hanja_result.csv", "w", newline="", encoding="utf-8") as csvfile:
+        csvwriter = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        csvwriter.writeheader()
 
-# Iterate through the list of Hanja characters and fetch their data
-for idx, hanja in enumerate(hanja_list, 1):
-    result = get_hanja_data(hanja, browser)
-    results.append(result)
-    if result[1] != None:
-        print(f"[{idx} / {len(hanja_list)}] {hanja}'s data has been fetched.")
-    else:
-        print(f"[{idx} / {len(hanja_list)}] Fetch Failed: {hanja}'")
+        for row in data:
+            csvwriter.writerow(row)
 
-# Close the browser session to relase resources
-browser.quit()
-print("WebCrawling Finished.")
 
-# Create a CSV file to store the results
-with open("hanja_result.csv", "w", newline="", encoding="utf-8") as csvfile:
+def main():
+    """
+    Main function for performing web scraping of Hanja data and exporting it to a CSV file.
+
+    This function initializes a SeleniumDriver instance, fetches Hanja data for a list of Hanja characters,
+    and exports the data to a CSV file named 'hanja_result.csv'.
+
+    :return: None
+    """
+    # Create a SeleniumDriver instance with common options
+    browser = SeleniumDriver(
+        [
+            "start-maximized",
+            "disable-infobars",
+            "--disable-extensions",
+            "--log-level=3",
+            "--headless",
+            "--disable-logging",
+            "--no-sandbox",
+            "--disable-gpu",
+        ]
+    )
+
+    # Create an empty list to store the results
+    results = []
+
+    # List of Hanja characters to search for
+    hanja_list = [
+        "校",
+        "敎",
+        "九",
+        "國",
+        "軍",
+        "金",
+        "南",
+        "女",
+        "年",
+        "大",
+        "東",
+        "六",  # this causing an error due to same shape but different unicode representation,
+        "萬",
+        "母",
+        "木",
+        "門",
+        "民",
+    ]
+
+    # Iterate through the list of Hanja characters and fetch their data
+    for idx, hanja in enumerate(hanja_list, 1):
+        result = get_hanja_data(hanja, browser)
+        results.append(result)
+        if result[1] != None:
+            print(f"[{idx} / {len(hanja_list)}] {hanja}'s data has been fetched.")
+        else:
+            print(f"[{idx} / {len(hanja_list)}] Fetch Failed: {hanja}'")
+
+    # Close the browser session to relase resources
+    browser.quit()
+    print("WebCrawling Finished.")
+
     # Define the CSV header
     fieldnames = [
         "hanja",
@@ -194,16 +225,11 @@ with open("hanja_result.csv", "w", newline="", encoding="utf-8") as csvfile:
         "naver_hanja_id",
     ]
 
-    # Create a CSV writer
-    csvwriter = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-    # Write the header to the CSV file
-    csvwriter.writeheader()
-
-    # Iterate through the list of Hanja characters and Write the result to the CSV file
-    for idx, result in enumerate(results, 1):
-        if result[1] != None:
-            csvwriter.writerow(
+    # Align data with fieldnames
+    csv_data = []
+    for result in results:
+        if result[1] is not None:  # Temporary for fixing bug
+            csv_data.append(
                 {
                     "hanja": result[0],
                     "meaning": result[2]["Meaning"],
@@ -215,8 +241,11 @@ with open("hanja_result.csv", "w", newline="", encoding="utf-8") as csvfile:
                     "naver_hanja_id": result[1],
                 }
             )
-            print(
-                f"[{idx} / {len(hanja_list)}] {result[0]}'s data has been written on csv file."
-            )
-        else:
-            print(f"[{idx} / {len(hanja_list)}] WriteRow Failed: {result[0]}'")
+
+    # Epxort the results to CSV
+    export_to_csv(fieldnames, csv_data)
+    print("CSV Export Finished")
+
+
+if __name__ == "__main__":
+    main()
