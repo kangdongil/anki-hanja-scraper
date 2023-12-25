@@ -25,6 +25,26 @@ def is_hanja(char):
     return False
 
 
+def standardize_hanja(hanja):
+    """
+    Standardize a Hanja character based on a mapping file.
+
+    :param hanja: The Hanja character to standardize.
+    :type hanja: str
+    :returns: The standardized Hanja character.
+    :rtype: str
+    """
+    mapping_file = "hanja_mapping.txt"
+
+    with open(mapping_file, "r", encoding="utf-8") as f:
+        for line in f:
+            standard_char, *variants = line.strip().split(":")
+            if hanja in variants:
+                return standard_char
+    # If no mapping is found, return the original character
+    return hanja
+
+
 def hanja_to_url(hanja_text, length=0):
     """
     Encode a Hanja text into a URL-friendly format.

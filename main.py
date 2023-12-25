@@ -5,7 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
-from hanja_tool import hanja_to_url
+from hanja_tool import hanja_to_url, standardize_hanja
 
 
 class SeleniumDriver(webdriver.Chrome):
@@ -97,7 +97,7 @@ def get_hanja_data(hanja, browser):
     )
 
     # Step 2: Extract the Hanja ID
-    if hanja_obj.text == hanja:
+    if hanja_obj.text == standardize_hanja(hanja):
         hanja_id = hanja_obj.get_attribute("href").split("/")[-1]
     else:
         return (hanja, None, None)
@@ -185,17 +185,7 @@ def main():
     # List of Hanja characters to search for
     hanja_list = [
         "校",
-        "敎",
-        "九",
-        "國",
-        "軍",
-        "金",
-        "南",
-        "女",
-        "年",
-        "大",
-        "東",
-        "六",  # this causing an error due to same shape but different unicode representation,
+        "六",
         "萬",
         "母",
         "木",
