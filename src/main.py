@@ -159,7 +159,7 @@ def export_to_csv(fieldnames, data):
     :param data: A list of dictionaries containing data to be exported to the CSV file.
     :type data: list
     """
-    with open("hanja_result.csv", "w", newline="", encoding="utf-8") as csvfile:
+    with open("data/hanja_result.csv", "w", newline="", encoding="utf-8") as csvfile:
         csvwriter = csv.DictWriter(csvfile, fieldnames=fieldnames)
         csvwriter.writeheader()
 
