@@ -1,8 +1,9 @@
-import re, csv
-from logger import logger
-from selenium_driver import SeleniumDriver
+import csv
+from datetime import datetime
+from shared.logger import logger
+from shared.selenium_driver import SeleniumDriver
 from selenium.webdriver.common.by import By
-from hanja_tool import hanja_to_url, standardize_hanja
+from shared.hanja_tool import is_hanja, hanja_to_url, standardize_hanja
 
 
 def fetch_hanja_data(hanja, browser):
@@ -89,7 +90,9 @@ def export_to_csv(fieldnames, data):
     :param data: A list of dictionaries containing data to be exported to the CSV file.
     :type data: list
     """
-    with open("data/hanja_result.csv", "w", newline="", encoding="utf-8") as csvfile:
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    output_name = f"data/hanja_csv_{timestamp}.csv"
+    with open(output_name, "w", newline="", encoding="utf-8") as csvfile:
         csvwriter = csv.DictWriter(csvfile, fieldnames=fieldnames)
         csvwriter.writeheader()
 
@@ -119,7 +122,7 @@ def scrape_hanja(hanja_input=None, instant_csv=False):
     if hanja_input is None:
         hanja_input = input("Enter Hanja characters: ")
     if isinstance(hanja_input, str):
-        hanja_input = list("".join(re.findall(r"[\u4e00-\u9fff]+", hanja_input)))
+        hanja_input = [char for char in hanja_input if is_hanja(char)]
     if isinstance(hanja_input, list):
         hanja_list = hanja_input
     else:
@@ -176,4 +179,4 @@ def scrape_hanja(hanja_input=None, instant_csv=False):
 
 
 if __name__ == "__main__":
-    scrape_hanja()
+    scrape_hanja(instant_csv=True)

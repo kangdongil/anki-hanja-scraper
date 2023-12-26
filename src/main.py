@@ -1,4 +1,4 @@
-from hanja import scrape_hanja
+from components.hanja import scrape_hanja
 
 # List of Hanja characters to search for
 hanja_list = [
@@ -12,7 +12,7 @@ hanja_list = [
 ]
 
 # Hanja characters as a string
-hanja_str = "校敎九國軍金"
+hanja_str = "校校校金母六"
 
 # Call the scrape_hanja function with a Hanja string as input
 result = scrape_hanja(hanja_str)
