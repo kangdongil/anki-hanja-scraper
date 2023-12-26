@@ -1,6 +1,7 @@
 # Folders
 data/
 reference/
+logs/
 
 # Image Extensions
 *.png
