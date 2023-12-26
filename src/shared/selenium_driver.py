@@ -1,8 +1,10 @@
+from shared.logger import logger
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
 
 class SeleniumDriver(webdriver.Chrome):
@@ -65,8 +67,12 @@ class SeleniumDriver(webdriver.Chrome):
         self.get(url)
 
         try:
-            WebDriverWait(self, 10).until(
+            WebDriverWait(self, 5).until(
                 EC.presence_of_element_located((locator[0], locator[1]))
             )
-        except Exception as e:
-            raise RuntimeError(f"Error waiting for element: {e}")
+        except NoSuchElementException:
+            logger.warning(f"{locator[1]}: Element not found on the page")
+        except TimeoutException:
+            logger.warning(
+                f"{locator[1]}: Timeout occurred while waiting for the element"
+            )
