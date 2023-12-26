@@ -1,4 +1,5 @@
 import csv
+from logger import logger
 from selenium_driver import SeleniumDriver
 from selenium.webdriver.common.by import By
 from hanja_tool import hanja_to_url, standardize_hanja
@@ -127,13 +128,13 @@ def main():
         result = get_hanja_data(hanja, browser)
         results.append(result)
         if result[1] != None:
-            print(f"[{idx} / {len(hanja_list)}] {hanja}'s data has been fetched.")
+            logger.info(f"[{idx} / {len(hanja_list)}] {hanja}'s data has been fetched.")
         else:
-            print(f"[{idx} / {len(hanja_list)}] Fetch Failed: {hanja}'")
+            logger.error(f"[{idx} / {len(hanja_list)}] Fetch Failed: {hanja}'")
 
     # Close the browser session to relase resources
     browser.quit()
-    print("WebCrawling Finished.")
+    logger.info("WebCrawling Finished.")
 
     # Define the CSV header
     fieldnames = [
@@ -166,7 +167,7 @@ def main():
 
     # Epxort the results to CSV
     export_to_csv(fieldnames, csv_data)
-    print("CSV Export Finished")
+    logger.info("CSV Export Finished")
 
 
 if __name__ == "__main__":
