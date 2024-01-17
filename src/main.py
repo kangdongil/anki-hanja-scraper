@@ -12,7 +12,7 @@ hanja_list = [
 ]
 
 # Hanja characters as a string
-hanja_str = "校校校金母六"
+hanja_str = "天地玄黃"
 
 # Call the scrape_hanja function with a Hanja string as input
 result = scrape_hanja(hanja_str)
