@@ -1,5 +1,5 @@
-from shared.logger import logger
-from shared.selenium_driver import SeleniumDriver
+from utils.logger import logger
+from utils.selenium_driver import SeleniumDriver
 from selenium.webdriver.common.by import By
 
 

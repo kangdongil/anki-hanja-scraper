@@ -1,4 +1,3 @@
-import re
 import urllib.parse
 
 hanja_ranges = [
@@ -38,7 +37,7 @@ def standardize_hanja(hanja):
     :returns: The standardized Hanja character.
     :rtype: str
     """
-    mapping_file = "src/shared/hanja_mapping.txt"
+    mapping_file = "src/utils/hanja_mapping.txt"
 
     with open(mapping_file, "r", encoding="utf-8") as f:
         for line in f:

@@ -1,9 +1,9 @@
 import csv
 from datetime import datetime
-from shared.logger import logger
-from shared.selenium_driver import SeleniumDriver
+from utils.logger import logger
+from utils.selenium_driver import SeleniumDriver
 from selenium.webdriver.common.by import By
-from shared.hanja_tool import is_hanja, hanja_to_url, standardize_hanja
+from utils.hanja_tool import is_hanja, hanja_to_url, standardize_hanja
 
 
 def fetch_hanja_data(hanja, browser):
