@@ -120,7 +120,8 @@ def fetch_word_data(word_id, browser):
         dict: A dictionary containing meanings and examples for the given word ID.
     """
     pending_ids, mean_list, example_list = [word_id], [], []
-    first_iteration = True
+    etymon_sign = "의 어근."
+    is_meaning_fetched = False
 
     while pending_ids:
         # Process each word ID until id list is empty
@@ -150,25 +151,33 @@ def fetch_word_data(word_id, browser):
         )
 
         for mean_obj in mean_objs:
-            if first_iteration:
-                # Extract meanings for the first iteration
+            if not is_meaning_fetched:
+                # Extract meanings for each iteration if not fetched yet
                 meaning_objs = mean_obj.find_elements(
                     By.CSS_SELECTOR, ".mean_desc .cont"
                 )
                 for meaning_obj in meaning_objs:
                     meaning = ""
+
+                    meaning = meaning_obj.find_element(
+                        By.CSS_SELECTOR, "span.mean"
+                    ).text
+
+                    # Retry fetching meaning if etymon_sign is founded
+                    if meaning.endswith(etymon_sign):
+                        meaning = None
+                        continue
+
                     try:
                         # Check if there is word theme for the meaning
                         word_theme = meaning_obj.find_element(
                             By.CSS_SELECTOR, "span.mean_addition"
                         )
-                        meaning = f"[{word_theme.text}] "
+                        meaning = f"[{word_theme.text}] {meaning}"
                     except NoSuchElementException:
                         pass
-                    # Complete string about word meaning whether there is word_theme or not
-                    meaning += meaning_obj.find_element(
-                        By.CSS_SELECTOR, "span.mean"
-                    ).text
+
+                    # Append the completed meaning string to the list
                     mean_list.append(meaning)
 
             # Extract examples for each meaning
@@ -188,7 +197,8 @@ def fetch_word_data(word_id, browser):
                 if example:
                     example_list.append(example)
 
-        first_iteration = False
+        if meaning:
+            is_meaning_fetched = True
 
     return {"means": mean_list, "examples": example_list}
 
@@ -204,8 +214,8 @@ def scrape_word():
     word_data = []
 
     # Specify the Hanja character and a list of Korean words
-    hanja = "敎"
-    word_list = ["교육", "반며교사", "갸갸", "교재", "교학상장", "설교", "포교", "반면교사"]
+    hanja = "輝"
+    word_list = ["휘황찬란"]
 
     # Iterate through the list of Korean words and fetch their data
     for idx, word in enumerate(word_list, 1):
