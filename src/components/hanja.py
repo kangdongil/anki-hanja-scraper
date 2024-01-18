@@ -1,9 +1,8 @@
-import csv
-from datetime import datetime
 from utils.logger import logger
 from utils.selenium_driver import SeleniumDriver
 from selenium.webdriver.common.by import By
 from utils.hanja_tool import is_hanja, hanja_to_url, standardize_hanja
+from utils.csv import export_to_csv
 
 
 def fetch_hanja_data(hanja, browser):
@@ -79,25 +78,53 @@ def fetch_hanja_data(hanja, browser):
     return data
 
 
-def export_to_csv(fieldnames, data):
+def export_hanja_csv_data(hanja_objs, filename=None):
     """
-    Export data to a CSV file.
+    Export hanja data to a CSV file.
 
-    :param file_name: The name of the CSV file to export.
-    :type file_name: str
-    :param fieldnames: A list of field names for the CSV header.
-    :type fieldnames: list
-    :param data: A list of dictionaries containing data to be exported to the CSV file.
-    :type data: list
+    :param hanja_objs: A list of dictionaries containing hanja data.
+    :type hanja_objs: list
+    :return: The name of the created CSV file.
+    :rtype: str
     """
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    output_name = f"data/hanja_csv_{timestamp}.csv"
-    with open(output_name, "w", newline="", encoding="utf-8") as csvfile:
-        csvwriter = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        csvwriter.writeheader()
+    # Define Keyword
+    csv_keyword = "hanja"
 
-        for row in data:
-            csvwriter.writerow(row)
+    # Define the CSV header
+    fieldnames = [
+        "hanja",
+        "meaning",
+        "radical",
+        "stroke_count",
+        "formation_letter",
+        "unicode",
+        "usage",
+        "naver_hanja_id",
+    ]
+
+    # Align data with fieldnames
+    csv_data = []
+    for hanja_item in hanja_objs:
+        csv_data.append(
+            {
+                "hanja": hanja_item[0],
+                "meaning": hanja_item[2]["Meaning"],
+                "radical": hanja_item[2]["Radical"],
+                "stroke_count": hanja_item[2]["Stroke Count"],
+                "formation_letter": "+".join(hanja_item[2]["Formation Letter"]),
+                "unicode": hanja_item[2]["Unicode"],
+                "usage": "·".join(hanja_item[2]["Usage"]),
+                "naver_hanja_id": hanja_item[1],
+            }
+        )
+
+    if filename:
+        export_to_csv(fieldnames, csv_data, csv_keyword, filename)
+    else:
+        filename = export_to_csv(fieldnames, csv_data, csv_keyword)
+    logger.info("CSV Export Finished")
+
+    return filename
 
 
 def scrape_hanja(hanja_input=None, instant_csv=False):
@@ -115,8 +142,8 @@ def scrape_hanja(hanja_input=None, instant_csv=False):
     # Create a SeleniumDriver instance with common options
     browser = SeleniumDriver()
 
-    # Create an empty list to store the results
-    results = []
+    # Create an empty list to store the hanja_objs
+    hanja_objs = []
 
     # Handle various input formats(console, str, list)
     if hanja_input is None:
@@ -130,9 +157,9 @@ def scrape_hanja(hanja_input=None, instant_csv=False):
 
     # Iterate through the list of Hanja characters and fetch their data
     for idx, hanja in enumerate(hanja_list, 1):
-        result = fetch_hanja_data(hanja, browser)
-        results.append(result)
-        if result[1] != None:
+        hanja_obj = fetch_hanja_data(hanja, browser)
+        hanja_objs.append(hanja_obj)
+        if hanja_obj[1] != None:
             logger.info(f"[{idx} / {len(hanja_list)}] {hanja}'s data has been fetched.")
         else:
             logger.error(f"[{idx} / {len(hanja_list)}] Fetch Failed: {hanja}'")
@@ -141,41 +168,10 @@ def scrape_hanja(hanja_input=None, instant_csv=False):
     browser.quit()
     logger.info("WebCrawling Finished.")
 
-    if instant_csv != True:
-        return results
-    else:
-        # Define the CSV header
-        fieldnames = [
-            "hanja",
-            "meaning",
-            "radical",
-            "stroke_count",
-            "formation_letter",
-            "unicode",
-            "usage",
-            "naver_hanja_id",
-        ]
+    if instant_csv == True:
+        return export_hanja_csv_data(hanja_objs)
 
-        # Align data with fieldnames
-        csv_data = []
-        for result in results:
-            if result[1] is not None:  # Temporary for fixing bug
-                csv_data.append(
-                    {
-                        "hanja": result[0],
-                        "meaning": result[2]["Meaning"],
-                        "radical": result[2]["Radical"],
-                        "stroke_count": result[2]["Stroke Count"],
-                        "formation_letter": ", ".join(result[2]["Formation Letter"]),
-                        "unicode": result[2]["Unicode"],
-                        "usage": ", ".join(result[2]["Usage"]),
-                        "naver_hanja_id": result[1],
-                    }
-                )
-
-        # Export the results to CSV
-        export_to_csv(fieldnames, csv_data)
-        logger.info("CSV Export Finished")
+    return hanja_objs
 
 
 if __name__ == "__main__":

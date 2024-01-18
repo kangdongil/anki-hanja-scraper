@@ -2,7 +2,7 @@ import csv
 from datetime import datetime
 
 
-def export_to_csv(fieldnames, data, filename=None):
+def export_to_csv(fieldnames, data, keyword, filename=None):
     """
     Export data to a CSV file.
 
@@ -10,7 +10,10 @@ def export_to_csv(fieldnames, data, filename=None):
     :type fieldnames: list
     :param data: A list of dictionaries containing data to be exported to the CSV file.
     :type data: list
-    :param filename: The name of the CSV file to export. If None, a timestamped name will be generated.
+    :param keyword: A string representing the keyword for the CSV file name.
+    :type keyword: str
+    :param filename: The name of the CSV file to export. If None, a timestamped name with the keyword will be generated.
+                     If provided, it should have the .csv extension.
     :type filename: str or None
     :return: The name of the created CSV file.
     :rtype: str
@@ -31,7 +34,7 @@ def export_to_csv(fieldnames, data, filename=None):
     # Generate timestamp for unique file name if filename is None
     if filename is None:
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        output_name = f"word_csv_{timestamp}.csv"
+        output_name = f"{keyword}_csv_{timestamp}.csv"
     else:
         # If filename is provided, use it and adjust file_mode to "a"
         if "/" in filename:

@@ -214,6 +214,9 @@ def export_word_csv_data(word_data, filename=None):
     :return: The name of the created CSV file.
     :rtype: str
     """
+    # Define Keyword
+    csv_keyword = "word"
+
     # Define the CSV header
     fieldnames = [
         "word_hanja",
@@ -237,9 +240,9 @@ def export_word_csv_data(word_data, filename=None):
         )
 
     if filename:
-        export_to_csv(fieldnames, csv_data, filename)
+        export_to_csv(fieldnames, csv_data, csv_keyword, filename)
     else:
-        filename = export_to_csv(fieldnames, csv_data)
+        filename = export_to_csv(fieldnames, csv_data, csv_keyword)
     logger.info("CSV Export Finished")
 
     return filename
