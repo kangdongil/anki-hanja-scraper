@@ -1,12 +1,11 @@
-import csv
-from datetime import datetime
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from utils.logger import logger
 from utils.selenium_driver import SeleniumDriver
-from utils.hanja_tool import hanja_to_url
-from utils.word_utils import filter_by_word_length
+from utils.hanja_tool import is_hanja, hanja_to_url
+from utils.word_utils import filter_by_word_length, is_single_word
+from utils.csv import export_to_csv
 
 
 def match_word_to_hanja(hanja, word, browser):
@@ -205,46 +204,69 @@ def fetch_word_data(word_id, browser):
     return {"means": mean_list, "examples": example_list}
 
 
-def export_to_csv(fieldnames, data):
+def export_word_csv_data(word_data, filename=None):
     """
-    Export data to a CSV file.
+    Export word data to a CSV file.
 
-    :param file_name: The name of the CSV file to export.
-    :type file_name: str
-    :param fieldnames: A list of field names for the CSV header.
-    :type fieldnames: list
-    :param data: A list of dictionaries containing data to be exported to the CSV file.
-    :type data: list
+    :param word_data: A list of dictionaries containing word data.
+    :type word_data: list
+    :return: The name of the created CSV file.
+    :rtype: str
     """
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    output_name = f"data/word_csv_{timestamp}.csv"
-    with open(output_name, "w", newline="", encoding="utf-8") as csvfile:
-        csvwriter = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        csvwriter.writeheader()
+    # Define the CSV header
+    fieldnames = [
+        "word_hanja",
+        "word_korean",
+        "means",
+        "examples",
+        "naver_word_id",
+    ]
 
-        for row in data:
-            csvwriter.writerow(row)
+    # Align data with fieldnames
+    csv_data = []
+    for word_item in word_data:
+        csv_data.append(
+            {
+                "word_hanja": word_item["hanja"],
+                "word_korean": word_item["korean"],
+                "means": "<br>".join(word_item["means"]),
+                "examples": "<br>".join(word_item["examples"]),
+                "naver_word_id": word_item["word_id"],
+            }
+        )
+
+    if filename:
+        export_to_csv(fieldnames, csv_data, filename)
+    else:
+        filename = export_to_csv(fieldnames, csv_data)
+    logger.info("CSV Export Finished")
+
+    return filename
 
 
-def scrape_word():
+def scrape_word(criteria_hanja, word_list, instant_csv=False):
     """
     Scrape word data for a list of Korean words associated with a Hanja character.
 
     The function fetches word data from Naver dictionary for a specified Hanja character and a list of Korean words.
     """
+
+    # Validation for criteria_hanja and word_list
+    if not is_hanja(criteria_hanja):
+        raise ValueError("criteria_hanja should be a valid single Chinese character.")
+
+    if not is_single_word(word_list):
+        raise ValueError(
+            f"word_list should contain valid single words without whitespace or newline characters. Found: {criteria_hanja}: {word_list}"
+        )
+
     # Create an instance of SeleniumDriver for web scraping
     browser = SeleniumDriver()
     word_data = []
 
-    # Specify the Hanja character and a list of Korean words
-    hanja = "敎"
-    word_list = ["교육", "반며교사", "갸갸", "교재", "교학상장", "설교", "포교", "반면교사"]
-    """ hanja = "輝"
-    word_list = ["휘황찬란"] """
-
     # Iterate through the list of Korean words and fetch their data
     for idx, word in enumerate(word_list, 1):
-        word_pairs = match_word_to_hanja(hanja, word, browser)
+        word_pairs = match_word_to_hanja(criteria_hanja, word, browser)
 
         if word_pairs is None:
             logger.error(f"[{idx} / {len(word_list)}] Fetch Failed: {word}")
@@ -269,31 +291,10 @@ def scrape_word():
     browser.quit()
     logger.info("WebCrawling Finished.")
 
-    # Define the CSV header
-    fieldnames = [
-        "word_hanja",
-        "word_korean",
-        "means",
-        "examples",
-        "naver_word_id",
-    ]
+    if instant_csv == True:
+        return export_word_csv_data(word_data)
 
-    # Align data with fieldnames
-    csv_data = []
-    for word_item in word_data:
-        csv_data.append(
-            {
-                "word_hanja": word_item["hanja"],
-                "word_korean": word_item["korean"],
-                "means": "<br>".join(word_item["means"]),
-                "examples": "<br>".join(word_item["examples"]),
-                "naver_word_id": word_item["word_id"],
-            }
-        )
-
-    # Export the results to CSV
-    export_to_csv(fieldnames, csv_data)
-    logger.info("CSV Export Finished")
+    return word_data
 
 
 if __name__ == "__main__":

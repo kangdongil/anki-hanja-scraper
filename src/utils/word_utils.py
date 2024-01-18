@@ -1,3 +1,19 @@
+def is_single_word(words):
+    """
+    Check if the words are valid single words without whitespace or newline characters.
+
+    :param words: The word or list of words to be validated.
+    :type words: str or list
+    :return: True if the words are valid, False otherwise.
+    :rtype: bool
+    """
+    if isinstance(words, str):
+        return bool(words and not any(c.isspace() for c in words))
+    elif isinstance(words, list):
+        return all(is_single_word(word) for word in words)
+    return False
+
+
 def filter_by_word_length(input_word, min_length=3, max_length=9):
     """
     Filter a word based on the number of words (space-separated).
@@ -10,7 +26,7 @@ def filter_by_word_length(input_word, min_length=3, max_length=9):
     Returns:
         str or list or None: If input_word is a string and the number of words is within
                              the specified range, return the input_word. If input_word is a list,
-                             return a list containing only words with word counts within the
+                O            return a list containing only words with word counts within the
                              specified range. If input_word is not a valid string or list, return None.
     """
     # Check if input_word is a string
