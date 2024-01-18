@@ -29,7 +29,7 @@ def match_word_to_hanja(hanja, word, browser):
     try:
         # Check if the search page entry exists
         browser.find_element(By.ID, "searchPage_entry")
-    except:
+    except NoSuchElementException:
         logger.warning(f"{word} doesn't exist in naver dictionary")
         return
 
@@ -46,15 +46,16 @@ def match_word_to_hanja(hanja, word, browser):
         # Extract Hanja and Korean word pairs
         wordhanja = candid.find_element(By.CSS_SELECTOR, ".origin a")
         if hanja in wordhanja.text:
-            word_pair = {
-                "hanja": wordhanja.text,
-                "korean": word,
-            }
-            word_pairs.append(word_pair)
+            word_pairs.append(
+                {
+                    "hanja": wordhanja.text,
+                    "korean": word,
+                }
+            )
 
     if not word_pairs:
         logger.warning(f"{word} doesn't appeared. Did you mean {candid_name}?")
-        return
+        return None
 
     return word_pairs
 
@@ -244,11 +245,23 @@ def export_word_csv_data(word_data, filename=None):
     return filename
 
 
-def scrape_word(criteria_hanja, word_list, instant_csv=False):
+def scrape_word(criteria_hanja, word_list, instant_csv=False, selenium_driver=None):
     """
     Scrape word data for a list of Korean words associated with a Hanja character.
 
     The function fetches word data from Naver dictionary for a specified Hanja character and a list of Korean words.
+
+    :param criteria_hanja: The Hanja character to search for.
+    :type criteria_hanja: str or None
+    :param word_list: A list of Korean words associated with the Hanja character.
+    :type word_list: list or None
+    :param instant_csv: Flag to indicate whether to export data to CSV instantly.
+    :type instant_csv: bool
+    :param selenium_driver: (Optional) An instance of SeleniumDriver for web scraping.
+                           If not provided, a new instance will be created and managed internally.
+    :type selenium_driver: SeleniumDriver or None
+    :return: The scraped word data or the name of the created CSV file.
+    :rtype: list or str
     """
 
     # Validation for criteria_hanja and word_list
@@ -260,8 +273,9 @@ def scrape_word(criteria_hanja, word_list, instant_csv=False):
             f"word_list should contain valid single words without whitespace or newline characters. Found: {criteria_hanja}: {word_list}"
         )
 
-    # Create an instance of SeleniumDriver for web scraping
-    browser = SeleniumDriver()
+    # Create an instance of SeleniumDriver for web scraping if not provided
+    browser = selenium_driver or SeleniumDriver()
+
     word_data = []
 
     # Iterate through the list of Korean words and fetch their data
@@ -288,13 +302,43 @@ def scrape_word(criteria_hanja, word_list, instant_csv=False):
         logger.info(f"[{idx} / {len(word_list)}] {word}'s data has been fetched.")
 
     # Close the browser session to release resources
-    browser.quit()
+    if selenium_driver is None:
+        browser.quit()
+
     logger.info("WebCrawling Finished.")
 
     if instant_csv == True:
         return export_word_csv_data(word_data)
 
     return word_data
+
+
+def scrape_multiple_words(word_objs):
+    """
+    Scrape word data for a list of word pairs and export to CSV.
+
+    :param word_objs: A list of tuples containing word pairs (criteria_hanja, word_list).
+    :type word_objs: list
+    """
+
+    # Create an instance of SeleniumDriver for web scraping
+    browser = SeleniumDriver()
+
+    csv_filename = None
+
+    for criteria_hanja, word_list in word_objs:
+        word_data = scrape_word(
+            criteria_hanja,
+            word_list,
+            selenium_driver=browser,
+        )
+        if not csv_filename:
+            csv_filename = export_word_csv_data(word_data)
+        else:
+            export_word_csv_data(word_data, csv_filename)
+
+    # Close the browser session to release resources
+    browser.quit()
 
 
 if __name__ == "__main__":
