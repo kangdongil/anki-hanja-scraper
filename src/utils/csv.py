@@ -52,7 +52,7 @@ def export_to_csv(fieldnames, data, keyword, filename=None):
     # Write data to CSV file
     file_mode = "w" if filename is None else "a"
     with open(
-        f"data/{output_name}", file_mode, newline="", encoding="utf-8"
+        f"data/output/{output_name}", file_mode, newline="", encoding="utf-8"
     ) as csvfile:
         csvwriter = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
