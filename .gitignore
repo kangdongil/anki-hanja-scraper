@@ -7,8 +7,8 @@ logs/
 *.png
 
 # Document Extensions
-*.csv
-*.txt
+data/*.csv
+data/*.txt
 *.log
 
 # Created by https://www.toptal.com/developers/gitignore/api/python
