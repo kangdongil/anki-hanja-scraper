@@ -1,5 +1,6 @@
-import sqlite3
 import os
+import sqlite3
+from typing import Dict, Optional
 
 
 class SQLiteDB:
@@ -10,7 +11,7 @@ class SQLiteDB:
     :type db_path: str
     """
 
-    def __init__(self, db_path):
+    def __init__(self, db_path: str):
         """
         Initialize the SQLiteDB instance.
 
@@ -18,11 +19,10 @@ class SQLiteDB:
         :type db_path: str
         """
         self.path = db_path
-        self.check_db_exist()
-        self.conn = None
-        self.cursor = None
+        self._check_db_exist()
+        self.connections = []  # Prevent Overwritten Connection When nested
 
-    def check_db_exist(self):
+    def _check_db_exist(self):
         """Check if the SQLite database file exists."""
         if not os.path.isfile(self.path):
             raise ValueError(f"The database file '{self.path}' does not exist.")
@@ -34,9 +34,10 @@ class SQLiteDB:
         :return: Tuple containing the SQLite connection and cursor.
         :rtype: tuple
         """
-        self.conn = sqlite3.connect(self.path)
-        self.cursor = self.conn.cursor()
-        return self.conn, self.cursor
+        conn = sqlite3.connect(self.path)
+        cursor = conn.cursor()
+        self.connections.append((conn, cursor))
+        return conn, cursor
 
     def __exit__(self, exc_type, exc_value, traceback):
         """
@@ -50,17 +51,212 @@ class SQLiteDB:
         :return: True if no exception should propagate, False otherwise.
         :rtype: bool
         """
-        if exc_type is None:
-            self.conn.commit()
-        else:
-            self.conn.rollback()
-
-        self.conn.close()
+        if self.connections:
+            conn, _ = self.connections.pop()
+            if exc_type is None:
+                conn.commit()
+            else:
+                conn.rollback()
+            conn.close()
 
         return exc_type is None
 
 
-# Schema Definition for the 'hanjas' table
+class SQLiteTable:
+    """
+    Initialize the SQLiteTable instance.
+
+    :param db: SQLiteDB instance.
+    :type db: SQLiteDB
+    :param tb_name: Name of the table.
+    :type tb_name: str
+    :param schema: Table schema defined as a dictionary.
+    :type schema: Dict[str, str]
+    """
+
+    def __init__(
+        self, db: SQLiteDB, tb_name: str, schema: Optional[Dict[str, str]] = None
+    ):
+        self.db = db
+        self.name = tb_name
+        self.schema = schema
+        self._validate_schema()
+        self._assign_table()
+
+    def _validate_schema(self):
+        """
+        Validate the provided table schema.
+
+        Ensure that schema is a dictionary and contains at least one item.
+        Validate the schema by ensuring that all columns have valid data types.
+
+        :raises ValueError: If the schema is invalid.
+        """
+        if self.schema is not None:
+            # Ensure that schema is a dictionary and contains at least one item
+            if not isinstance(self.schema, dict) or not self.schema:
+                raise ValueError("Invalid schema. It should be a non-empty dictionary.")
+
+            # Validate the schema by ensuring that all columns have valid data types
+            data_types = {"INTEGER", "TEXT", "REAL", "BLOB", "NULL"}
+            valid_columns = set()
+
+            for column, options in self.schema.items():
+                # Check if the column type is valid
+                data_type = options.split()[0]
+                if data_type not in data_types:
+                    raise ValueError(
+                        f"Invalid data type '{data_type}' for column '{column}' in the table schema."
+                    )
+                valid_columns.add(column.lower())  # Use lowercase names
+
+            # Check if all columns in the schema are valid
+            schema_columns = set(column.lower() for column in self.schema.keys())
+            invalid_columns = schema_columns - valid_columns
+            if invalid_columns:
+                raise ValueError(
+                    f"Invalid columns in the schema: {', '.join(invalid_columns)}"
+                )
+
+    def _create_table(self):
+        """
+        Create the table in the SQLite database.
+
+        Uses the provided schema to construct the CREATE TABLE SQL statement and execute it.
+
+        :raises ValueError: If an error occurs during table creation.
+        """
+        with self.db as (_, cursor):
+            # Construct the CREATE TABLE SQL statement
+            columns_str = ", ".join(
+                [f"{column} {options}" for column, options in self.schema.items()]
+            )
+            query = f"CREATE TABLE IF NOT EXISTS {self.name} ({columns_str})"
+
+            # Execute the SQL statement
+            cursor.execute(query)
+
+    def _get_existing_schema(self):
+        """
+        Retrieve the existing schema of the table from the SQLite database.
+
+        :return: Dictionary representing the existing schema.
+        :rtype: Dict[str, str]
+
+        :raises ValueError: If an error occurs while fetching the existing schema.
+        """
+        with self.db as (_, cursor):
+            # Get the SQL statement used to create the table from sqlite_master
+            cursor.execute(
+                f"SELECT sql FROM sqlite_master WHERE type='table' AND name=?;",
+                (self.name,),
+            )
+            query = cursor.fetchone()
+
+            if query:
+                # Extract the part of the SQL statement that defines the columns
+                columns_definition = query[0].split("(")[1].split(")")[0].strip()
+                columns_list = [col.strip() for col in columns_definition.split(",")]
+
+                # Construct the existing schema dictionary
+                existing_schema = {}
+                for col in columns_list:
+                    parts = col.split(" ")
+                    col_name = parts[0]
+                    col_type = " ".join(parts[1:])
+                    existing_schema[col_name] = col_type
+
+                return existing_schema
+
+            else:
+                raise ValueError(f"The table '{self.name}' does not exist.")
+
+    def _are_schemas_compatible(self, existing_schema, provided_schema):
+        """
+        Check if the provided schema is compatible with the existing schema.
+
+        :param existing_schema: Existing schema retrieved from the database.
+        :type existing_schema: Dict[str, str]
+        :param provided_schema: Schema provided during table instantiation.
+        :type provided_schema: Dict[str, str]
+
+        :raises ValueError: If schemas are not compatible.
+        :return: True if schemas are compatible, False otherwise.
+        :rtype: bool
+        """
+        if existing_schema != provided_schema:
+            existing_columns = set(existing_schema.keys())
+            provided_columns = set(provided_schema.keys())
+
+            # Identify columns present in the provided schema but not in the existing schema
+            new_columns = provided_columns - existing_columns
+            if new_columns:
+                raise ValueError(
+                    f"The provided schema has new columns: {', '.join(new_columns)}"
+                )
+
+            # Identify columns present in the existing schema but not in the provided schema
+            missing_columns = existing_columns - provided_columns
+            if missing_columns:
+                raise ValueError(
+                    f"The provided schema is missing columns: {', '.join(missing_columns)}"
+                )
+
+            # Identify columns with different data types in the provided and existing schemas
+            different_data_types = {
+                column: (existing_schema[column], provided_schema[column])
+                for column in existing_columns & provided_columns
+                if existing_schema[column] != provided_schema[column]
+            }
+
+            if different_data_types:
+                messages = [
+                    f"Column '{column}' has different data types: Existing: {existing_schema[column]}, Provided: {provided_schema[column]}"
+                    for column in different_data_types
+                ]
+                raise ValueError("\n".join(messages))
+            # Schemas are compatible if no differences are found
+            return True
+        return True
+
+    def _assign_table(self):
+        """
+        Assign the table to the SQLite database.
+
+        Check if the table already exists. If not, create it using the provided schema.
+        If the table exists, validate the compatibility of the existing schema with the provided schema.
+
+        :raises ValueError: If an error occurs during table assignment.
+        """
+        with self.db as (_, cursor):
+            # Check if the table already exists
+            cursor.execute(
+                f"SELECT name FROM sqlite_master WHERE type='table' AND name=?;",
+                (self.name,),
+            )
+            existing_table = cursor.fetchone()
+
+            if existing_table is None:
+                # Table does not exist, create it
+                if self.schema is not None:
+                    self._create_table(self.name, self.schema)
+                else:
+                    raise ValueError(
+                        f"The table '{self.name}' does not exist, and schema is not provided."
+                    )
+
+            else:
+                # Table exists
+                existing_schema = self._get_existing_schema()
+                if self.schema is not None:
+                    # Schema is provided, check for compatibility
+                    if not self._are_schemas_compatible(existing_schema, self.schema):
+                        raise ValueError(
+                            "The provided schema is not compatible with the existing table."
+                        )
+
+
+""" # Schema Definition for the 'hanjas' table
 hanja_schema = {
     "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
     "hanja": "TEXT NOT NULL",
@@ -75,7 +271,7 @@ hanja_schema = {
     "reference_idx": "TEXT",
     "naver_dict_update_date": "TEXT",
     "naver_hanja_id": "TEXT",
-}
+} """
 
 # Sample hanja data
 hanja_data = {
@@ -93,20 +289,12 @@ hanja_data = {
     "naver_hanja_id": "2367ab9f300841eebcb8a76db1f91654",
 }
 
+# Create SQLiteDB and SQLiteTable Instances
 hanja_db = SQLiteDB("data/db/hanja.db")
-# hanja_table = SQLiteTable(hanja_db, "hanjas", hanja_schema)
+hanja_table = SQLiteTable(hanja_db, "hanjas")
 
 # Connect to SQLite database
 with hanja_db as (conn, cursor):
-    # Create the 'hanjas' table if it doesn't exist
-    cursor.execute(
-        f"""
-        CREATE TABLE IF NOT EXISTS hanjas (
-            {', '.join([f'{column} {options}' for column, options in hanja_schema.items()])}
-        )
-        """
-    )
-
     # Insert the hanja data into the 'hanjas' table
     cursor.execute(
         f"""
