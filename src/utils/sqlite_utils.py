@@ -1,4 +1,64 @@
 import sqlite3
+import os
+
+
+class SQLiteDB:
+    """
+    SQLite database context manager.
+
+    :param db_path: Path to the SQLite database file.
+    :type db_path: str
+    """
+
+    def __init__(self, db_path):
+        """
+        Initialize the SQLiteDB instance.
+
+        :param db_path: Path to the SQLite database file.
+        :type db_path: str
+        """
+        self.path = db_path
+        self.check_db_exist()
+        self.conn = None
+        self.cursor = None
+
+    def check_db_exist(self):
+        """Check if the SQLite database file exists."""
+        if not os.path.isfile(self.path):
+            raise ValueError(f"The database file '{self.path}' does not exist.")
+
+    def __enter__(self):
+        """
+        Class Method which is called when entering a 'with' block and returns connection and cursor.
+
+        :return: Tuple containing the SQLite connection and cursor.
+        :rtype: tuple
+        """
+        self.conn = sqlite3.connect(self.path)
+        self.cursor = self.conn.cursor()
+        return self.conn, self.cursor
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """
+        Class Method which is called when exiting the 'with' block when there is no exception
+
+        :param exc_type: Type of the exception (or None if no exception).
+        :type exc_type: type
+        :param exc_value: The exception value (or None if no exception).
+        :param traceback: The traceback object (or None if no exception).
+
+        :return: True if no exception should propagate, False otherwise.
+        :rtype: bool
+        """
+        if exc_type is None:
+            self.conn.commit()
+        else:
+            self.conn.rollback()
+
+        self.conn.close()
+
+        return exc_type is None
+
 
 # Schema Definition for the 'hanjas' table
 hanja_schema = {
@@ -33,11 +93,11 @@ hanja_data = {
     "naver_hanja_id": "2367ab9f300841eebcb8a76db1f91654",
 }
 
-# Connect to SQLite database
-with sqlite3.connect("data/db/hanja.db") as conn:
-    # Create a cursor within the 'with' statement
-    cursor = conn.cursor()
+hanja_db = SQLiteDB("data/db/hanja.db")
+# hanja_table = SQLiteTable(hanja_db, "hanjas", hanja_schema)
 
+# Connect to SQLite database
+with hanja_db as (conn, cursor):
     # Create the 'hanjas' table if it doesn't exist
     cursor.execute(
         f"""
@@ -56,9 +116,3 @@ with sqlite3.connect("data/db/hanja.db") as conn:
         """,
         tuple(hanja_data.values()),
     )
-
-    # Commit the changes
-    conn.commit()
-
-    # The 'with' statement ensures the connection is closed automatically
-    # conn.close()
