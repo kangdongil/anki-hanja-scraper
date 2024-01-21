@@ -1,5 +1,22 @@
 import sqlite3
 
+# Schema Definition for the 'hanjas' table
+hanja_schema = {
+    "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+    "hanja": "TEXT NOT NULL",
+    "meaning": "TEXT NOT NULL",
+    "meaning_official": "TEXT",
+    "radical": "TEXT",
+    "stroke_count": "INTEGER",
+    "formation_letter": "TEXT",
+    "grade": "INTEGER",
+    "usage": "TEXT",
+    "unicode": "TEXT",
+    "reference_idx": "TEXT",
+    "naver_dict_update_date": "TEXT",
+    "naver_hanja_id": "TEXT",
+}
+
 # Sample hanja data
 hanja_data = {
     "hanja": "示",
@@ -17,41 +34,31 @@ hanja_data = {
 }
 
 # Connect to SQLite database
-conn = sqlite3.connect("data/db/hanja.db")
-cursor = conn.cursor()
+with sqlite3.connect("data/db/hanja.db") as conn:
+    # Create a cursor within the 'with' statement
+    cursor = conn.cursor()
 
-# Connect to SQLite database
-cursor.execute(
-    """
+    # Create the 'hanjas' table if it doesn't exist
+    cursor.execute(
+        f"""
         CREATE TABLE IF NOT EXISTS hanjas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            hanja TEXT NOT NULL,
-            meaning TEXT NOT NULL,
-            meaning_official TEXT,
-            radical TEXT,
-            stroke_count INTEGER,
-            formation_letter TEXT,
-            grade INTEGER,
-            usage TEXT,
-            unicode TEXT,
-            reference_idx TEXT,
-            naver_dict_update_date TEXT,
-            naver_hanja_id TEXT
+            {', '.join([f'{column} {options}' for column, options in hanja_schema.items()])}
         )
-    """
-)
+        """
+    )
 
-# Insert the hanja data into the 'hanjas' table
-cursor.execute(
-    """
-    INSERT INTO hanjas 
-    (hanja, meaning, meaning_official, radical, stroke_count, formation_letter, 
-    grade, usage, unicode, reference_idx, naver_dict_update_date, naver_hanja_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-""",
-    tuple(hanja_data.values()),
-)
+    # Insert the hanja data into the 'hanjas' table
+    cursor.execute(
+        f"""
+        INSERT INTO hanjas 
+        ({', '.join(hanja_data.keys())})
+        VALUES ({', '.join(['?' for _ in hanja_data])})
+        """,
+        tuple(hanja_data.values()),
+    )
 
-# Commit the changes and close the connection
-conn.commit()
-conn.close()
+    # Commit the changes
+    conn.commit()
+
+    # The 'with' statement ensures the connection is closed automatically
+    # conn.close()
