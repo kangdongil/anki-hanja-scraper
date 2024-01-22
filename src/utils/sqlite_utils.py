@@ -111,6 +111,19 @@ class SQLiteTable:
         self._validate_schema()
         self._assign_table()
 
+    def create(self, data: Dict[str, Union[int, str]]):
+        """
+        Create a new record in the table.
+
+        :param data: Data for the new record.
+        :type data: Dict[str, Union[int, str]]
+        """
+        columns = ", ".join(data.keys())
+        values = ", ".join(["?" for _ in data])
+
+        query = f"INSERT INTO {self.name} ({columns}) VALUES ({values})"
+        self.db.run_query(query, tuple(data.values()))
+
     def _validate_schema(self):
         """
         Validate the provided table schema.
@@ -322,14 +335,7 @@ hanja_db = SQLiteDB("data/db/hanja.db")
 hanja_table = SQLiteTable(hanja_db, "hanjas")
 
 # Insert a row into the 'hanjas' table
-hanja_db.run_query(
-    f"""
-        INSERT INTO hanjas 
-        ({', '.join(hanja_data.keys())})
-        VALUES ({', '.join(['?' for _ in hanja_data])})
-        """,
-    tuple(hanja_data.values()),
-)
+hanja_table.create(hanja_data)
 
 # Retrieve all rows from the 'hanjas' table
 hanjas_table_rows = hanja_db.run_query("SELECT * FROM hanjas")
