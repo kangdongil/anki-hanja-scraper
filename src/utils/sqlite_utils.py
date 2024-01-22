@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from typing import Dict, Optional
+from typing import List, Tuple, Dict, Optional, Union
 
 
 class SQLiteDB:
@@ -21,6 +21,34 @@ class SQLiteDB:
         self.path = db_path
         self._check_db_exist()
         self.connections = []  # Prevent Overwritten Connection When nested
+
+    def run_query(
+        self, query: str, params: Optional[Tuple] = None
+    ) -> List[Dict[str, Union[int, str]]]:
+        """
+        Run a custom query on the database.
+
+        :param query: Custom SQL query.
+        :type query: str
+        :param params: Optional parameters for the query.
+        :type params: Optional[Tuple]
+
+        :return: List of dictionaries representing the result of the query.
+        :rtype: List[Dict[str, Union[int, str]]]
+        """
+        with self as (_, cursor):
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+
+            result = []
+
+            if cursor.description is not None:
+                columns = [column[0] for column in cursor.description]
+                result = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+            return result
 
     def _check_db_exist(self):
         """Check if the SQLite database file exists."""
@@ -293,14 +321,16 @@ hanja_data = {
 hanja_db = SQLiteDB("data/db/hanja.db")
 hanja_table = SQLiteTable(hanja_db, "hanjas")
 
-# Connect to SQLite database
-with hanja_db as (conn, cursor):
-    # Insert the hanja data into the 'hanjas' table
-    cursor.execute(
-        f"""
+# Insert a row into the 'hanjas' table
+hanja_db.run_query(
+    f"""
         INSERT INTO hanjas 
         ({', '.join(hanja_data.keys())})
         VALUES ({', '.join(['?' for _ in hanja_data])})
         """,
-        tuple(hanja_data.values()),
-    )
+    tuple(hanja_data.values()),
+)
+
+# Retrieve all rows from the 'hanjas' table
+hanjas_table_rows = hanja_db.run_query("SELECT * FROM hanjas")
+print(hanjas_table_rows)
