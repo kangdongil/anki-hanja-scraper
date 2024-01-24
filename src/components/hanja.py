@@ -30,7 +30,7 @@ def fetch_hanja_data(hanja, browser):
     if hanja_obj.text == standardize_hanja(hanja):
         hanja_id = hanja_obj.get_attribute("href").split("/")[-1]
     else:
-        return (hanja, None, None)
+        return {"hanja": hanja}
 
     # Step 3: Access the Detail Webpage with Hanja ID
     detailed_url = f"https://hanja.dict.naver.com/#/entry/ccko/{hanja_id}"
@@ -63,19 +63,18 @@ def fetch_hanja_data(hanja, browser):
         )
     )
     # Step 6: Create a dictionary with Hanja information
-    hanja_info = {
-        "Meaning": hanja_meaning,
-        "Radical": hanja_radical,
-        "Stroke Count": hanja_stroke_count,
-        "Formation Letter": formation_letter,
-        "Unicode": unicode,
-        "Usage": usage,
+    hanja_data = {
+        "hanja": hanja,
+        "meaning_official": hanja_meaning,
+        "radical": hanja_radical,
+        "stroke_count": hanja_stroke_count,
+        "formation_letter": formation_letter,
+        "unicode": unicode,
+        "usage": usage,
+        "naver_hanja_id": hanja_id,
     }
 
-    # Step 7: Create a tuple with Hanja character, its unique ID, and detailed information
-    data = (hanja, hanja_id, hanja_info)
-
-    return data
+    return hanja_data
 
 
 def export_hanja_csv_data(hanja_objs, filename=None):
@@ -93,7 +92,7 @@ def export_hanja_csv_data(hanja_objs, filename=None):
     # Define the CSV header
     fieldnames = [
         "hanja",
-        "meaning",
+        "meaning_official",
         "radical",
         "stroke_count",
         "formation_letter",
@@ -107,14 +106,14 @@ def export_hanja_csv_data(hanja_objs, filename=None):
     for hanja_item in hanja_objs:
         csv_data.append(
             {
-                "hanja": hanja_item[0],
-                "meaning": hanja_item[2]["Meaning"],
-                "radical": hanja_item[2]["Radical"],
-                "stroke_count": hanja_item[2]["Stroke Count"],
-                "formation_letter": "+".join(hanja_item[2]["Formation Letter"]),
-                "unicode": hanja_item[2]["Unicode"],
-                "usage": "·".join(hanja_item[2]["Usage"]),
-                "naver_hanja_id": hanja_item[1],
+                "hanja": hanja_item["hanja"],
+                "meaning_official": hanja_item["meaning_official"],
+                "radical": hanja_item["radical"],
+                "stroke_count": hanja_item["stroke_count"],
+                "formation_letter": "+".join(hanja_item["formation_letter"]),
+                "unicode": hanja_item["unicode"],
+                "usage": "·".join(hanja_item["usage"]),
+                "naver_hanja_id": hanja_item["naver_hanja_id"],
             }
         )
 
@@ -158,7 +157,7 @@ def scrape_hanja(hanja_input=None, instant_csv=False):
         for idx, hanja in enumerate(hanja_list, 1):
             hanja_obj = fetch_hanja_data(hanja, browser)
             hanja_objs.append(hanja_obj)
-            if hanja_obj[1] != None:
+            if hanja_obj["naver_hanja_id"] != None:
                 logger.info(
                     f"[{idx} / {len(hanja_list)}] {hanja}'s data has been fetched."
                 )
@@ -167,6 +166,7 @@ def scrape_hanja(hanja_input=None, instant_csv=False):
 
         # Close the browser session to relase resources
         logger.info("WebCrawling Finished.")
+        print(hanja_objs)
 
     if instant_csv == True:
         return export_hanja_csv_data(hanja_objs)

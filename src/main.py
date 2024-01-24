@@ -16,9 +16,10 @@ hanja_list = [
 hanja_str = "天地玄黃"
 
 # Call the scrape_hanja function with a Hanja string as input
-scrape_hanja(hanja_str, instant_csv=True)
+result = scrape_hanja(hanja_str)
+print(result)
 
-
+""" 
 # Example usage of scrape_multiple_words function
 search_list = [
     ("敎", ["교육", "반며교사", "갸갸", "교재", "교학상장", "설교", "포교", "반면교사"]),
@@ -30,3 +31,4 @@ search_list = [
 
 # Call the scrape_multiple_words function with a list of word objs as input
 scrape_multiple_words(search_list)
+ """
