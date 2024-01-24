@@ -1,16 +1,31 @@
-import re
+import os, re
 
 
 def parse_data_by_regex(data, patterns):
+    """
+    Parse data using regular expressions based on given patterns.
+
+    Args:
+        data (str): The input data to be parsed.
+        patterns (list): List of patterns for extracting information.
+
+    Returns:
+        dict: A dictionary containing extracted information.
+
+    Raises:
+        ValueError: If an invalid pattern or datatype is encountered.
+    """
     result = {}
     lines = data.strip().split("\n")
 
     for i, pattern in enumerate(patterns):
+        # Handle single string pattern
         if isinstance(pattern, str):
             match = re.match(pattern, lines[i])
             if match:
                 result.update(match.groupdict())
         elif isinstance(pattern, tuple):
+            # Handle tuple pattern with regex, delimiter
             regex, delimiter, *rest = pattern
             if rest:
                 raise ValueError(
@@ -29,6 +44,19 @@ def parse_data_by_regex(data, patterns):
 
 
 def process_txt_file(file_path, patterns):
+    """
+    Process a text file using specified patterns and extract data into dictionaries.
+
+    Args:
+        file_path (str): The path to the text file.
+        patterns (list): List of patterns for extracting information.
+
+    Returns:
+        list: List of dictionaries containing processed data.
+    """
+    if not file_path.startswith("data/input/"):
+        file_path = os.path.join("data/input", file_path)
+
     with open(file_path, "r", encoding="utf-8") as file:
         content = file.read()
 
@@ -42,15 +70,3 @@ def process_txt_file(file_path, patterns):
         processed_data.append(entry)
 
     return processed_data
-
-
-# Replace 'your_file.txt' with the path to your actual file
-patterns = [
-    "(?P<hanja>[\w]):(?P<meaning>[\w\s.;]+):?(?P<simplified_char>[\w])?",
-    ("(?P<words>.*)", ";"),
-    "(?P<reference_idx>[\w]+)",
-]
-
-output = process_txt_file("data/input/2401222258.txt", patterns)
-
-print(output)
