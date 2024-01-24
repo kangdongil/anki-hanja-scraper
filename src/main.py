@@ -1,23 +1,50 @@
+import sys
 from components.hanja import scrape_hanja
 from components.word import scrape_word, scrape_multiple_words
+from components.input import process_txt_file
 
-# List of Hanja characters to search for
-hanja_list = [
-    "校",
-    "六",
-    "萬",
-    "母",
-    "木",
-    "門",
-    "民",
-]
+input_data = process_txt_file(
+    file_path="2401222259.txt",
+    patterns=[
+        "(?P<hanja>[\w]):(?P<meaning>[\w\s.;]+):?(?P<simplified_char>[\w])?",
+        ("(?P<words>.*)", ";"),
+        "(?P<reference_idx>[\w]+)",
+    ],
+)
+scrapped_data = scrape_hanja([entry["hanja"] for entry in input_data])
+print("input_data", input_data)
+print("scrapped_data", scrapped_data)
 
-# Hanja characters as a string
-hanja_str = "天地玄黃"
 
-# Call the scrape_hanja function with a Hanja string as input
-result = scrape_hanja(hanja_str)
-print(result)
+def merge_hanja_data(input_data, scrapped_data):
+    item_order = [
+        "hanja",
+        "simplified_char",
+        "meaning",
+        "meaning_official",
+        "radical",
+        "stroke_count",
+        "formation_letter",
+        "unicode",
+        "usage",
+        "words",
+        "reference_idx",
+        "naver_hanja_id",
+    ]
+
+    merged_list = []
+
+    for input_dict, scrapped_dict in zip(input_data, scrapped_data):
+        merged_dict = {key: input_dict.get(key, None) for key in item_order}
+        merged_dict.update(scrapped_dict)
+        merged_list.append(merged_dict)
+
+    return merged_list
+
+
+print(merge_hanja_data(input_data, scrapped_data))
+
+sys.exit()
 
 """ 
 # Example usage of scrape_multiple_words function
