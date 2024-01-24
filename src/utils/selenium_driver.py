@@ -25,6 +25,8 @@ class SeleniumDriver(webdriver.Chrome):
         :type locator: tuple
     """
 
+    _with_depth = 0  # Counter to track the depth of nested 'with' statements
+
     def __init__(self, options=None):
         chrome_options = webdriver.ChromeOptions()
         chrome_options.set_capability("pageLoadStrategy", "none")
@@ -46,10 +48,27 @@ class SeleniumDriver(webdriver.Chrome):
         for opt in options:
             chrome_options.add_argument(opt)
 
+        # Initialize the WebDriver with configured options
         super().__init__(
             service=ChromeService(ChromeDriverManager().install()),
             options=chrome_options,
         )
+
+    def __enter__(self):
+        """
+        Enter method for using the class with the 'with' statement. Increments the 'with' depth.
+        """
+        self._with_depth += 1
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """
+        Exit method for using the class with the 'with' statement. Decrements the 'with' depth.
+        Quits the driver if it's the outermost 'with' statement.
+        """
+        self._with_depth -= 1
+        if not self._with_depth:
+            self.quit()
 
     def get_await(self, url, locator):
         """
@@ -64,9 +83,11 @@ class SeleniumDriver(webdriver.Chrome):
         if not isinstance(locator, tuple) or len(locator) != 2:
             raise ValueError("Locator should be a tuple with 2 arguments (By, value)")
 
+        # Navigate to the specified URL
         self.get(url)
 
         try:
+            # Wait for the element to be present
             WebDriverWait(self, 5).until(
                 EC.presence_of_element_located((locator[0], locator[1]))
             )

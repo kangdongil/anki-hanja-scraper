@@ -140,33 +140,33 @@ def scrape_hanja(hanja_input=None, instant_csv=False):
     """
 
     # Create a SeleniumDriver instance with common options
-    browser = SeleniumDriver()
+    with SeleniumDriver() as browser:
+        # Create an empty list to store the hanja_objs
+        hanja_objs = []
 
-    # Create an empty list to store the hanja_objs
-    hanja_objs = []
-
-    # Handle various input formats(console, str, list)
-    if hanja_input is None:
-        hanja_input = input("Enter Hanja characters: ")
-    if isinstance(hanja_input, str):
-        hanja_input = [char for char in hanja_input if is_hanja(char)]
-    if isinstance(hanja_input, list):
-        hanja_list = hanja_input
-    else:
-        raise ValueError("Invalid hanja_input format")
-
-    # Iterate through the list of Hanja characters and fetch their data
-    for idx, hanja in enumerate(hanja_list, 1):
-        hanja_obj = fetch_hanja_data(hanja, browser)
-        hanja_objs.append(hanja_obj)
-        if hanja_obj[1] != None:
-            logger.info(f"[{idx} / {len(hanja_list)}] {hanja}'s data has been fetched.")
+        # Handle various input formats(console, str, list)
+        if hanja_input is None:
+            hanja_input = input("Enter Hanja characters: ")
+        if isinstance(hanja_input, str):
+            hanja_input = [char for char in hanja_input if is_hanja(char)]
+        if isinstance(hanja_input, list):
+            hanja_list = hanja_input
         else:
-            logger.error(f"[{idx} / {len(hanja_list)}] Fetch Failed: {hanja}'")
+            raise ValueError("Invalid hanja_input format")
 
-    # Close the browser session to relase resources
-    browser.quit()
-    logger.info("WebCrawling Finished.")
+        # Iterate through the list of Hanja characters and fetch their data
+        for idx, hanja in enumerate(hanja_list, 1):
+            hanja_obj = fetch_hanja_data(hanja, browser)
+            hanja_objs.append(hanja_obj)
+            if hanja_obj[1] != None:
+                logger.info(
+                    f"[{idx} / {len(hanja_list)}] {hanja}'s data has been fetched."
+                )
+            else:
+                logger.error(f"[{idx} / {len(hanja_list)}] Fetch Failed: {hanja}'")
+
+        # Close the browser session to relase resources
+        logger.info("WebCrawling Finished.")
 
     if instant_csv == True:
         return export_hanja_csv_data(hanja_objs)

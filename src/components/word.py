@@ -277,36 +277,34 @@ def scrape_word(criteria_hanja, word_list, instant_csv=False, selenium_driver=No
         )
 
     # Create an instance of SeleniumDriver for web scraping if not provided
-    browser = selenium_driver or SeleniumDriver()
+    with selenium_driver or SeleniumDriver() as browser:
+        word_data = []
 
-    word_data = []
+        # Iterate through the list of Korean words and fetch their data
+        for idx, word in enumerate(word_list, 1):
+            word_pairs = match_word_to_hanja(criteria_hanja, word, browser)
 
-    # Iterate through the list of Korean words and fetch their data
-    for idx, word in enumerate(word_list, 1):
-        word_pairs = match_word_to_hanja(criteria_hanja, word, browser)
-
-        if word_pairs is None:
-            logger.error(f"[{idx} / {len(word_list)}] Fetch Failed: {word}")
-            continue  # Skip to the next word on failure
-
-        # Fetch word IDs and additional data for each word
-        for word_pair in word_pairs:
-            word_item = fetch_word_id(word_pair, browser)
-
-            if word_item is None:
-                logger.error(
-                    f"[{idx} / {len(word_list)}] Word ID {word_item['word_id']} fetch failed for {word}."
-                )
+            if word_pairs is None:
+                logger.error(f"[{idx} / {len(word_list)}] Fetch Failed: {word}")
                 continue  # Skip to the next word on failure
 
-            word_item = {**word_item, **fetch_word_data(word_item["word_id"], browser)}
-            word_data.append(word_item)
+            # Fetch word IDs and additional data for each word
+            for word_pair in word_pairs:
+                word_item = fetch_word_id(word_pair, browser)
 
-        logger.info(f"[{idx} / {len(word_list)}] {word}'s data has been fetched.")
+                if word_item is None:
+                    logger.error(
+                        f"[{idx} / {len(word_list)}] Word ID {word_item['word_id']} fetch failed for {word}."
+                    )
+                    continue  # Skip to the next word on failure
 
-    # Close the browser session to release resources
-    if selenium_driver is None:
-        browser.quit()
+                word_item = {
+                    **word_item,
+                    **fetch_word_data(word_item["word_id"], browser),
+                }
+                word_data.append(word_item)
+
+            logger.info(f"[{idx} / {len(word_list)}] {word}'s data has been fetched.")
 
     logger.info("WebCrawling Finished.")
 
@@ -325,23 +323,22 @@ def scrape_multiple_words(word_objs):
     """
 
     # Create an instance of SeleniumDriver for web scraping
-    browser = SeleniumDriver()
+    with SeleniumDriver() as browser:
+        csv_filename = None
 
-    csv_filename = None
-
-    for criteria_hanja, word_list in word_objs:
-        word_data = scrape_word(
-            criteria_hanja,
-            word_list,
-            selenium_driver=browser,
-        )
-        if not csv_filename:
-            csv_filename = export_word_csv_data(word_data)
-        else:
-            export_word_csv_data(word_data, csv_filename)
+        for criteria_hanja, word_list in word_objs:
+            word_data = scrape_word(
+                criteria_hanja,
+                word_list,
+                selenium_driver=browser,
+            )
+            if not csv_filename:
+                csv_filename = export_word_csv_data(word_data)
+            else:
+                export_word_csv_data(word_data, csv_filename)
 
     # Close the browser session to release resources
-    browser.quit()
+    logger.info("WebCrawling Finished.")
 
 
 if __name__ == "__main__":
