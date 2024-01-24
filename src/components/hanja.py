@@ -166,7 +166,6 @@ def scrape_hanja(hanja_input=None, instant_csv=False):
 
         # Close the browser session to relase resources
         logger.info("WebCrawling Finished.")
-        print(hanja_objs)
 
     if instant_csv == True:
         return export_hanja_csv_data(hanja_objs)
