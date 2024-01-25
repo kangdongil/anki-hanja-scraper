@@ -113,6 +113,73 @@ class SQLiteTable:
         query = f"INSERT INTO {self.name} ({columns}) VALUES ({values})"
         self.db.run_query(query, tuple(data.values()))
 
+    def read_data(
+        self,
+        select_list: Union[List[str], str] = "*",
+        where_condition: Optional[str] = None,
+        order_by_expression: Optional[str] = None,
+        order_by_direction: Optional[str] = None,
+    ) -> List[Dict[str, Union[int, str]]]:
+        """
+        Retrieve all records from the table.
+
+        :return: List of dictionaries representing the records.
+        :rtype: List[Dict[str, Union[int, str]]]
+        """
+
+        # Helper function to validate columns
+        def validate_columns(columns):
+            for column in columns:
+                if column.lower() != "*" and column.lower() not in self.schema:
+                    raise ValueError(f"No such column: {column}")
+
+        # Validate select_list
+        if isinstance(select_list, list):
+            validate_columns(select_list)
+            select_list = ", ".join(select_list)
+        elif isinstance(select_list, str):
+            columns = [col.strip() for col in select_list.split(",")]
+            validate_columns(columns)
+            select_list = ", ".join(columns)
+        else:
+            raise ValueError(
+                "Invalid select_list format. Should be a list or a string."
+            )
+
+        # Validate where_condition
+        if where_condition:
+            # Attempt to execute a query with the WHERE condition to catch any errors
+            try:
+                self.db.run_query(
+                    f"SELECT * FROM {self.name} WHERE {where_condition} LIMIT 1"
+                )
+            except sqlite3.Error as e:
+                raise ValueError(f"Invalid WHERE condition: {e}")
+
+        # Validate order_by_expression
+        if order_by_expression:
+            # Attempt to execute a query with the ORDER BY expression to catch any errors
+            try:
+                self.db.run_query(
+                    f"SELECT * FROM {self.name} ORDER BY {order_by_expression} LIMIT 1"
+                )
+            except sqlite3.Error as e:
+                raise ValueError(f"Invalid ORDER BY expression: {e}")
+
+        # Construct the SELECT statement
+        select_clause = f"SELECT {select_list}"
+        where_clause = f"WHERE {where_condition}" if where_condition else ""
+        order_by_clause = (
+            f"ORDER BY {order_by_expression} {order_by_direction}"
+            if order_by_expression
+            else ""
+        )
+
+        query = f"{select_clause} FROM {self.name} {where_clause} {order_by_clause}"
+
+        # Execute the query
+        return self.db.run_query(query)
+
     def _validate_schema(self):
         """
         Validate the provided table schema.
@@ -334,3 +401,7 @@ hanja_table = SQLiteTable(hanja_db, "hanjas", hanja_schema)
 
 # Insert a row into the 'hanjas' table
 hanja_table.create_data(hanja_data)
+
+# Retrieve all rows from the 'hanjas' table
+result = hanja_table.read_data(["hanja", "meaning", "grade"])
+print(result)
