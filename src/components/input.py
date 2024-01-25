@@ -1,4 +1,6 @@
 import os, re
+from components.hanja import scrape_hanja
+from components.word import scrape_multiple_words
 
 
 def parse_data_by_regex(data, patterns):
@@ -43,7 +45,7 @@ def parse_data_by_regex(data, patterns):
     return result
 
 
-def process_txt_file(file_path, patterns):
+def convert_txt_to_dict(file_path, patterns, entry_dict):
     """
     Process a text file using specified patterns and extract data into dictionaries.
 
@@ -70,3 +72,38 @@ def process_txt_file(file_path, patterns):
         processed_data.append(entry)
 
     return processed_data
+
+
+def merge_data_into_dict(entry_dict, input_hanja, scrapped_hanja):
+    result = []
+
+    for input_data, scrapped_data in zip(input_hanja, scrapped_hanja):
+        hanja = input_data["hanja"]
+        merged_dict = {"hanja": hanja}
+
+        for key in entry_dict:
+            merged_dict[key] = input_data.get(key, scrapped_data.get(key, None))
+
+        result.append(merged_dict)
+
+    return result
+
+
+def process_txt_file(file_path, patterns, entry_list):
+    entry_dict = {key: None for key in entry_list.split("|")}
+    input_hanja = convert_txt_to_dict(
+        file_path=file_path,
+        patterns=patterns,
+        entry_dict=entry_dict,
+    )
+    # Before Scrapping, check hanja is stored in DB
+    scrapped_hanja = scrape_hanja([entry["hanja"] for entry in input_hanja])
+    scrapped_words = scrape_multiple_words(
+        [(input_data["hanja"], input_data["words"]) for input_data in input_hanja]
+    )
+    hanja_data = merge_data_into_dict(
+        entry_dict,
+        input_hanja,
+        scrapped_hanja,
+    )
+    return (hanja_data, scrapped_words)

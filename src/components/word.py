@@ -342,7 +342,7 @@ def scrape_multiple_words(word_objs, instant_csv=False):
                     csv_filename = export_word_csv_data(word_data)
                 else:
                     export_word_csv_data(word_data, csv_filename)
-    return word_list
+    return word_data_list
 
 
 if __name__ == "__main__":
