@@ -61,6 +61,23 @@ class SQLiteDB:
 
         return exc_type is None
 
+    def run_query(self, query: str, parameters: Optional[Tuple] = ()) -> List[Tuple]:
+        """
+        Execute an SQL query and return the result.
+
+        :param query: SQL query to be executed.
+        :type query: str
+        :param parameters: Parameters to be substituted into the query (default is an empty tuple).
+        :type parameters: tuple, optional
+
+        :return: List of tuples representing the query result.
+        :rtype: List[Tuple]
+        """
+        with self as (conn, cursor):
+            cursor.execute(query, parameters)
+            result = cursor.fetchall()
+        return result
+
 
 class SQLiteTable:
     """
@@ -82,6 +99,19 @@ class SQLiteTable:
         self.schema = schema
         self._validate_schema()
         self._assign_table()
+
+    def create_data(self, data: Dict[str, Union[int, str]]):
+        """
+        Create a new record in the table.
+
+        :param data: Data for the new record.
+        :type data: Dict[str, Union[int, str]]
+        """
+        columns = ", ".join(data.keys())
+        values = ", ".join(["?" for _ in data])
+
+        query = f"INSERT INTO {self.name} ({columns}) VALUES ({values})"
+        self.db.run_query(query, tuple(data.values()))
 
     def _validate_schema(self):
         """
@@ -302,14 +332,5 @@ hanja_data = {
 hanja_db = SQLiteDB("data/db/hanja.db")
 hanja_table = SQLiteTable(hanja_db, "hanjas", hanja_schema)
 
-# Connect to SQLite database
-with hanja_db as (conn, cursor):
-    # Insert the hanja data into the 'hanjas' table
-    cursor.execute(
-        f"""
-        INSERT INTO hanjas 
-        ({', '.join(hanja_data.keys())})
-        VALUES ({', '.join(['?' for _ in hanja_data])})
-        """,
-        tuple(hanja_data.values()),
-    )
+# Insert a row into the 'hanjas' table
+hanja_table.create_data(hanja_data)
