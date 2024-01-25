@@ -278,6 +278,7 @@ def scrape_word(criteria_hanja, word_list, instant_csv=False, selenium_driver=No
 
     # Create an instance of SeleniumDriver for web scraping if not provided
     with selenium_driver or SeleniumDriver() as browser:
+        logger.info(f"Scrapping {criteria_hanja}'s words:")
         word_data = []
 
         # Iterate through the list of Korean words and fetch their data
@@ -304,7 +305,9 @@ def scrape_word(criteria_hanja, word_list, instant_csv=False, selenium_driver=No
                 }
                 word_data.append(word_item)
 
-            logger.info(f"[{idx} / {len(word_list)}] {word}'s data has been fetched.")
+            logger.info(
+                f"[{idx} / {len(word_list)}] {word}({word_item['hanja']})'s data has been fetched."
+            )
 
     logger.info("WebCrawling Finished.")
 
@@ -314,7 +317,7 @@ def scrape_word(criteria_hanja, word_list, instant_csv=False, selenium_driver=No
     return word_data
 
 
-def scrape_multiple_words(word_objs):
+def scrape_multiple_words(word_objs, instant_csv=False):
     """
     Scrape word data for a list of word pairs and export to CSV.
 
@@ -324,6 +327,7 @@ def scrape_multiple_words(word_objs):
 
     # Create an instance of SeleniumDriver for web scraping
     with SeleniumDriver() as browser:
+        word_data_list = []
         csv_filename = None
 
         for criteria_hanja, word_list in word_objs:
@@ -332,13 +336,13 @@ def scrape_multiple_words(word_objs):
                 word_list,
                 selenium_driver=browser,
             )
-            if not csv_filename:
-                csv_filename = export_word_csv_data(word_data)
-            else:
-                export_word_csv_data(word_data, csv_filename)
-
-    # Close the browser session to release resources
-    logger.info("WebCrawling Finished.")
+            word_data_list.append(word_data)
+            if instant_csv:
+                if not csv_filename:
+                    csv_filename = export_word_csv_data(word_data)
+                else:
+                    export_word_csv_data(word_data, csv_filename)
+    return word_list
 
 
 if __name__ == "__main__":
