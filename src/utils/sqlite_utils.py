@@ -116,12 +116,21 @@ class SQLiteTable:
     def read_data(
         self,
         select_list: Union[List[str], str] = "*",
-        where_condition: Optional[str] = None,
+        where_condition: Optional[Dict[str, Union[int, str]]] = None,
         order_by_expression: Optional[str] = None,
         order_by_direction: Optional[str] = None,
     ) -> List[Dict[str, Union[int, str]]]:
         """
-        Retrieve all records from the table.
+        Retrieve records from the table based on the given conditions.
+
+        :param select_list: List of columns to select or '*' to select all columns.
+        :type select_list: Union[list, str]
+        :param where_condition: Conditions to filter records.
+        :type where_condition: Dict[str, Union[int, str]], optional
+        :param order_by_expression: Column to use for sorting the result.
+        :type order_by_expression: str, optional
+        :param order_by_direction: Sorting direction ('ASC' or 'DESC').
+        :type order_by_direction: str, optional
 
         :return: List of dictionaries representing the records.
         :rtype: List[Dict[str, Union[int, str]]]
@@ -147,14 +156,15 @@ class SQLiteTable:
             )
 
         # Validate where_condition
+        if where_condition and not isinstance(where_condition, dict):
+            raise ValueError("where_condition must be a dictionary")
+
+        where_clause, where_values = "", ()
         if where_condition:
-            # Attempt to execute a query with the WHERE condition to catch any errors
-            try:
-                self.db.run_query(
-                    f"SELECT * FROM {self.name} WHERE {where_condition} LIMIT 1"
-                )
-            except sqlite3.Error as e:
-                raise ValueError(f"Invalid WHERE condition: {e}")
+            where_clause = "WHERE " + " AND ".join(
+                [f"{column} = ?" for column in where_condition.keys()]
+            )
+            where_values = tuple(where_condition.values())
 
         # Validate order_by_expression
         if order_by_expression:
@@ -168,7 +178,6 @@ class SQLiteTable:
 
         # Construct the SELECT statement
         select_clause = f"SELECT {select_list}"
-        where_clause = f"WHERE {where_condition}" if where_condition else ""
         order_by_clause = (
             f"ORDER BY {order_by_expression} {order_by_direction}"
             if order_by_expression
@@ -178,7 +187,52 @@ class SQLiteTable:
         query = f"{select_clause} FROM {self.name} {where_clause} {order_by_clause}"
 
         # Execute the query
-        return self.db.run_query(query)
+        return self.db.run_query(query, where_values)
+
+    def update_data(
+        self,
+        new_data: Dict[str, Union[int, str]],
+        where_condition: Optional[Dict[str, Union[int, str]]] = None,
+    ):
+        """
+        Update records in the table based on the given conditions.
+
+        :param new_data: Updated data for the records.
+        :type new_data: Dict[str, Union[int, str]]
+        :param where_condition: Conditions to identify records to be updated.
+        :type where_condition: Dict[str, Union[int, str]], optional
+        """
+        # Validate that new_data is a dictionary
+        if not isinstance(new_data, dict):
+            raise ValueError("new_data must be a dictionary")
+
+        # Validate that where_condition is a dictionary
+        if where_condition and not isinstance(where_condition, dict):
+            raise ValueError("where_condition must be a dictionary")
+
+        # Construct the SET clause for the UPDATE statement
+        set_clause = ", ".join([f"{column} = ?" for column in new_data.keys()])
+
+        # Construct the WHERE clause for the UPDATE statement
+        where_clause = ""
+        if where_condition:
+            where_clause = " AND ".join(
+                [f"{column} = ?" for column in where_condition.keys()]
+            )
+
+        # Construct the UPDATE statement
+        query = f"UPDATE {self.name} SET {set_clause} WHERE {where_clause}"
+
+        try:
+            # Execute the UPDATE statement
+            self.db.run_query(
+                query,
+                tuple(new_data.values()) + tuple(where_condition.values())
+                if where_condition
+                else (),
+            )
+        except sqlite3.Error as e:
+            print(f"Error updating data: {e}")
 
     def _validate_schema(self):
         """
@@ -399,9 +453,13 @@ hanja_data = {
 hanja_db = SQLiteDB("data/db/hanja.db")
 hanja_table = SQLiteTable(hanja_db, "hanjas", hanja_schema)
 
-# Insert a row into the 'hanjas' table
+""" # Insert a row into the 'hanjas' table
 hanja_table.create_data(hanja_data)
 
 # Retrieve all rows from the 'hanjas' table
 result = hanja_table.read_data(["hanja", "meaning", "grade"])
-print(result)
+print(result) """
+
+# Update a record in 'hanjas' table
+hanja_table.update_data({"meaning": "볼 시", "stroke_count": 3}, {"hanja": "示"})
+print(hanja_table.read_data(select_list=["id", "hanja", "meaning"]))
