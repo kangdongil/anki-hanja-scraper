@@ -111,7 +111,26 @@ class SQLiteTable:
         values = ", ".join(["?" for _ in data])
 
         query = f"INSERT INTO {self.name} ({columns}) VALUES ({values})"
-        self.db.run_query(query, tuple(data.values()))
+        try:
+            self.db.run_query(query, tuple(data.values()))
+        except sqlite3.IntegrityError as e:
+            # Handle unique constraint violation
+            if "UNIQUE constraint failed" in str(e):
+                print(f"The data already exists in DB({self.db.path})")
+                user_response = input(
+                    "Do you want to update the existing record? (y/n): "
+                ).lower()
+
+                if user_response in ["y", ""]:
+                    try:
+                        # Attempt to update the existing record
+                        self.update_data(data, {"hanja": data["hanja"]})
+                    except ValueError as update_error:
+                        print(f"Error updating data: {update_error}")
+                else:
+                    print("Aborting procedure. No changes made.")
+            else:
+                print(f"Error: {e}")
 
     def read_data(
         self,
@@ -419,7 +438,7 @@ class SQLiteTable:
 # Schema Definition for the 'hanjas' table
 hanja_schema = {
     "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
-    "hanja": "TEXT NOT NULL",
+    "hanja": "TEXT NOT NULL UNIQUE",
     "meaning": "TEXT NOT NULL",
     "meaning_official": "TEXT",
     "radical": "TEXT",
@@ -461,5 +480,5 @@ result = hanja_table.read_data(["hanja", "meaning", "grade"])
 print(result) """
 
 # Update a record in 'hanjas' table
-hanja_table.update_data({"meaning": "볼 시", "stroke_count": 3}, {"hanja": "示"})
+hanja_table.update_data({"meaning": "빌 시", "stroke_count": 3}, {"hanja": "示"})
 print(hanja_table.read_data(select_list=["id", "hanja", "meaning"]))
