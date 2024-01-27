@@ -2,7 +2,7 @@ import csv
 from datetime import datetime
 
 
-def export_to_csv(fieldnames, data, keyword, filename=None):
+def export_to_csv(fieldnames, data, keyword, filename=None, is_header=True):
     """
     Export data to a CSV file.
 
@@ -57,10 +57,17 @@ def export_to_csv(fieldnames, data, keyword, filename=None):
         csvwriter = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
         # Write header only if the file is newly created
-        if file_mode == "w":
+        if file_mode == "w" and is_header:
             csvwriter.writeheader()
 
         for row in data:
+            # Convert list values to a string with "<br>" delimiter
+            for key, value in row.items():
+                if isinstance(value, list):
+                    row[key] = "<br>".join(map(str, value))
+                elif isinstance(value, tuple):
+                    row[key] = "+".join(map(str, value))
+
             csvwriter.writerow(row)
 
     return output_name
