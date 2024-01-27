@@ -45,9 +45,9 @@ def parse_data_by_regex(data, patterns):
     return result
 
 
-def convert_txt_to_dict(file_path, patterns, entry_dict):
+def read_txt_file(file_path, patterns):
     """
-    Process a text file using specified patterns and extract data into dictionaries.
+    Read a text file, process it using specified patterns, and extract data into dictionaries.
 
     Args:
         file_path (str): The path to the text file.
@@ -74,36 +74,110 @@ def convert_txt_to_dict(file_path, patterns, entry_dict):
     return processed_data
 
 
-def merge_data_into_dict(entry_dict, input_hanja, scrapped_hanja):
+def merge_data_into_dict(entry_dict, input_data, scrapped_hanja):
+    """
+    Merge input data and scrapped hanja data into a list of dictionaries.
+
+    Args:
+        entry_dict (dict): A dictionary representing the structure of the entries.
+        input_data (list): List of dictionaries containing input data.
+        scrapped_hanja (list): List of dictionaries containing scrapped hanja data.
+
+    Returns:
+        list: List of dictionaries containing merged data.
+    """
     result = []
 
-    for input_data, scrapped_data in zip(input_hanja, scrapped_hanja):
-        hanja = input_data["hanja"]
+    for input_entry, scrapped_entry in zip(input_data, scrapped_hanja):
+        hanja = input_entry["hanja"]
         merged_dict = {"hanja": hanja}
 
+        # Merge data from input and scrapped hanja entries
         for key in entry_dict:
-            merged_dict[key] = input_data.get(key, scrapped_data.get(key, None))
+            merged_dict[key] = input_entry.get(key, scrapped_entry.get(key, None))
 
         result.append(merged_dict)
 
     return result
 
 
-def process_txt_file(file_path, patterns, entry_list):
+def scrape_data(input_data, entry_dict):
+    """
+    Scrape additional data using the input data.
+
+    Args:
+        input_data (list): List of dictionaries containing input data.
+        entry_dict (dict): A dictionary representing the structure of the entries.
+
+    Returns:
+        tuple: A tuple containing scraped hanja and words data.
+    """
+    ## Before Scrapping, check hanja is stored in DB
+
+    # Scrape hanja data using input hanja entries
+    scrapped_hanja = scrape_hanja([entry["hanja"] for entry in input_data])
+
+    # Scrape words data using input hanja and words entries
+    scrapped_words = scrape_multiple_words(
+        [(input_entry["hanja"], input_entry["words"]) for input_entry in input_data]
+    )
+
+    # Merge input data with scraped hanja data
+    hanja_data = merge_data_into_dict(entry_dict, input_data, scrapped_hanja)
+
+    return hanja_data, scrapped_words
+
+
+def apply_modifiers(data, modifiers):
+    """
+    Apply modifiers to the data before returning.
+
+    Args:
+        data (tuple): A tuple containing hanja and words data.
+        modifiers (list): List of modifier functions.
+
+    Returns:
+        tuple: A tuple containing hanja and words data after applying modifiers.
+    """
+    hanja_data, scrapped_words = data
+
+    # Apply modifiers to hanja data
+    if modifiers:
+        for modifier in modifiers:
+            hanja_data = modifier(hanja_data)
+
+    return hanja_data, scrapped_words
+
+
+def process_txt_file(file_path, patterns, entry_list, modifiers=None):
+    """
+    Process a text file, extract and merge data, and apply modifiers.
+
+    Args:
+        file_path (str): The path to the text file.
+        patterns (list): List of patterns for extracting information.
+        entry_list (str): Pipe-separated list of entry keys.
+        modifiers (list): List of modifier functions.
+
+    Returns:
+        tuple: A tuple containing hanja and words data after applying modifiers.
+    """
+
+    # Create a dictionary with entry keys initialized to None
     entry_dict = {key: None for key in entry_list.split("|")}
-    input_hanja = convert_txt_to_dict(
+
+    # Read the text file, extract information based on patterns, and store in a list of dictionaries
+    input_hanja = read_txt_file(
         file_path=file_path,
         patterns=patterns,
-        entry_dict=entry_dict,
     )
-    # Before Scrapping, check hanja is stored in DB
-    scrapped_hanja = scrape_hanja([entry["hanja"] for entry in input_hanja])
-    scrapped_words = scrape_multiple_words(
-        [(input_data["hanja"], input_data["words"]) for input_data in input_hanja]
-    )
-    hanja_data = merge_data_into_dict(
-        entry_dict,
-        input_hanja,
-        scrapped_hanja,
-    )
-    return (hanja_data, scrapped_words)
+
+    ## Before Scrapping, check hanja is stored in DB
+
+    # Scrape additional data using the input data and entry dictionary
+    scrapped_data = scrape_data(input_hanja, entry_dict)
+
+    # Apply modifiers at the end
+    result = apply_modifiers(scrapped_data, modifiers)
+
+    return result
