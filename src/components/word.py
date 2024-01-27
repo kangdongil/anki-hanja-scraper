@@ -44,11 +44,13 @@ def match_word_to_hanja(hanja, word, browser):
             break
 
         # Extract Hanja and Korean word pairs
-        wordhanja = candid.find_element(By.CSS_SELECTOR, ".origin a")
-        if hanja in wordhanja.text:
+        wordhanja = candid.find_element(By.CSS_SELECTOR, ".origin a").text
+        if hanja in wordhanja:
+            if "(" in wordhanja:
+                wordhanja = wordhanja.split("(")[0].strip()
             word_pairs.append(
                 {
-                    "hanja": wordhanja.text,
+                    "hanja": wordhanja,
                     "korean": word,
                 }
             )
@@ -294,9 +296,6 @@ def scrape_word(criteria_hanja, word_list, instant_csv=False, selenium_driver=No
                 word_item = fetch_word_id(word_pair, browser)
 
                 if word_item is None:
-                    logger.error(
-                        f"[{idx} / {len(word_list)}] Word ID {word_item['word_id']} fetch failed for {word}."
-                    )
                     continue  # Skip to the next word on failure
 
                 word_item = {
@@ -305,9 +304,9 @@ def scrape_word(criteria_hanja, word_list, instant_csv=False, selenium_driver=No
                 }
                 word_data.append(word_item)
 
-            logger.info(
-                f"[{idx} / {len(word_list)}] {word}({word_item['hanja']})'s data has been fetched."
-            )
+                logger.info(
+                    f"[{idx} / {len(word_list)}] {word}({word_item['hanja']})'s data has been fetched."
+                )
 
     logger.info("WebCrawling Finished.")
 
@@ -336,7 +335,7 @@ def scrape_multiple_words(word_objs, instant_csv=False):
                 word_list,
                 selenium_driver=browser,
             )
-            word_data_list.append(word_data)
+            word_data_list.extend(word_data)
             if instant_csv:
                 if not csv_filename:
                     csv_filename = export_word_csv_data(word_data)

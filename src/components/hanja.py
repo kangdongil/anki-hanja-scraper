@@ -55,7 +55,9 @@ def fetch_hanja_data(hanja, browser):
         formation_letter = tuple(seg[0] for seg in formation_letters)
     else:
         formation_letter = None
-    unicode = hanja_infos[2].find_element(By.CLASS_NAME, "desc").text
+    unicode = hanja_entry.find_element(
+        By.CSS_SELECTOR, ".entry_infos .unicode .desc"
+    ).text
     usage = tuple(
         usage.text
         for usage in hanja_entry.find_elements(
