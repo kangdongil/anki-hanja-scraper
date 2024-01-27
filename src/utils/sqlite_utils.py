@@ -73,9 +73,13 @@ class SQLiteDB:
         :return: List of tuples representing the query result.
         :rtype: List[Tuple]
         """
-        with self as (conn, cursor):
+        with self as (_, cursor):
             cursor.execute(query, parameters)
-            result = cursor.fetchall()
+            if cursor.description is not None:
+                columns = [column[0] for column in cursor.description]
+                result = [dict(zip(columns, row)) for row in cursor.fetchall()]
+            else:
+                result = []
         return result
 
 
@@ -252,6 +256,44 @@ class SQLiteTable:
             )
         except sqlite3.Error as e:
             print(f"Error updating data: {e}")
+
+    def delete_data(self, where_condition: Dict[str, Union[int, str]]) -> None:
+        """
+        Delete records from the table based on the given conditions.
+
+        :param where_condition: Conditions to identify records to be deleted.
+        :type where_condition: Dict[str, Union[int, str]]
+        """
+        # Validate that where_condition is a dictionary
+        if not isinstance(where_condition, dict):
+            raise ValueError("where_condition must be a dictionary")
+
+        # Check if the record exists before attempting to delete
+        deleted_items = self.read_data(where_condition=where_condition)
+        if not deleted_items:
+            print("The specified item does not exist in the database.")
+            return None
+
+        response = input(
+            f"{len(deleted_items)} item(s) would be deleted. Proceed? (y/n):"
+        ).lower()
+
+        if response in ["y", ""]:
+            # Construct the WHERE clause for the DELETE statement
+            where_clause = " AND ".join(
+                [f"{column} = ?" for column in where_condition.keys()]
+            )
+
+            # Construct the DELETE statement
+            query = f"DELETE FROM {self.name} WHERE {where_clause}"
+
+            try:
+                # Execute the DELETE statement
+                self.db.run_query(query, tuple(where_condition.values()))
+            except sqlite3.Error as e:
+                print(f"Error deleting data: {e}")
+        else:
+            print("Deletion aborted. No changes made.")
 
     def _validate_schema(self):
         """
@@ -479,6 +521,8 @@ hanja_table.create_data(hanja_data)
 result = hanja_table.read_data(["hanja", "meaning", "grade"])
 print(result) """
 
-# Update a record in 'hanjas' table
+""" # Update a record in 'hanjas' table
 hanja_table.update_data({"meaning": "빌 시", "stroke_count": 3}, {"hanja": "示"})
-print(hanja_table.read_data(select_list=["id", "hanja", "meaning"]))
+print(hanja_table.read_data(select_list=["id", "hanja", "meaning"])) """
+
+hanja_table.delete_data({"hanja": "視"})
