@@ -45,7 +45,7 @@ def parse_data_by_regex(data, patterns):
     return result
 
 
-def read_txt_file(file_path, patterns):
+def process_txt_file(file_path, patterns, delimiter="\n\n"):
     """
     Read a text file, process it using specified patterns, and extract data into dictionaries.
 
@@ -63,7 +63,7 @@ def read_txt_file(file_path, patterns):
         content = file.read()
 
     # Split content into chunks based on double newline
-    chunks = content.split("\n\n")
+    chunks = content.split(delimiter)
     processed_data = []
 
     # Process each chunk and extract data into dictionaries
@@ -139,17 +139,18 @@ def apply_modifiers(data, modifiers):
     Returns:
         tuple: A tuple containing hanja and words data after applying modifiers.
     """
-    hanja_data, scrapped_words = data
 
     # Apply modifiers to hanja data
     if modifiers:
         for modifier in modifiers:
-            hanja_data = modifier(hanja_data)
+            data = modifier(data)
 
-    return hanja_data, scrapped_words
+    return data
 
 
-def process_txt_file(file_path, patterns, entry_list, modifiers=None):
+def process_hanja_txt(
+    file_path, patterns, entry_list, hanja_modifiers=None, words_modifiers=None
+):
     """
     Process a text file, extract and merge data, and apply modifiers.
 
@@ -167,7 +168,7 @@ def process_txt_file(file_path, patterns, entry_list, modifiers=None):
     entry_dict = {key: None for key in entry_list.split("|")}
 
     # Read the text file, extract information based on patterns, and store in a list of dictionaries
-    input_hanja = read_txt_file(
+    input_hanja = process_txt_file(
         file_path=file_path,
         patterns=patterns,
     )
@@ -175,9 +176,10 @@ def process_txt_file(file_path, patterns, entry_list, modifiers=None):
     ## Before Scrapping, check hanja is stored in DB
 
     # Scrape additional data using the input data and entry dictionary
-    scrapped_data = scrape_data(input_hanja, entry_dict)
+    hanja_data, scrapped_words = scrape_data(input_hanja, entry_dict)
 
     # Apply modifiers at the end
-    result = apply_modifiers(scrapped_data, modifiers)
+    hanja_data = apply_modifiers(hanja_data, hanja_modifiers)
+    scrapped_words = apply_modifiers(scrapped_words, words_modifiers)
 
-    return result
+    return (hanja_data, scrapped_words)
