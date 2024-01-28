@@ -71,3 +71,36 @@ def hanja_to_url(hanja_text, length=0):
 
     url_encoded = urllib.parse.quote(hanja_text, encoding="utf-8")
     return url_encoded
+
+
+def format_num_to_hanja_rank(value):
+    """
+    Format a numeric value to a Hanja rank.
+
+    Args:
+        value (float or int): The numeric value to format.
+
+    Returns:
+        str: The formatted Hanja rank.
+
+    Raises:
+        ValueError: If the value is not a valid Hanja rank.
+    """
+
+    # Ensure value is float
+    value = float(value)
+
+    # Check if value matches a predefined rank
+    rank_mapping = [(0, "特級"), (0.5, "特級II"), (9, "級外字")]
+    for v, result in rank_mapping:
+        if value == v:
+            return result
+
+    # Format value into Hanja Rank
+    if 1 <= value <= 8:
+        if value % 1 == 0:
+            return f"{int(value)}級"
+        elif value % 1 == 0.5:
+            return f"{int(value)}級II"
+
+    raise ValueError("Invalid value for Hanja Rank")

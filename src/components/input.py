@@ -1,6 +1,7 @@
 import os, re
 from components.hanja import scrape_hanja
 from components.word import scrape_multiple_words
+from utils.logger import logger
 
 
 def parse_data_by_regex(data, patterns):
@@ -140,10 +141,27 @@ def apply_modifiers(data, modifiers):
         tuple: A tuple containing hanja and words data after applying modifiers.
     """
 
-    # Apply modifiers to hanja data
-    if modifiers:
-        for modifier in modifiers:
-            data = modifier(data)
+    # If no modifiers are provided, return the original data
+    if not modifiers:
+        return data
+
+    for modifier in modifiers:
+        try:
+            # Check if the modifier is a tuple containing a function and a column name
+            if isinstance(modifier, tuple):
+                # Apply the modifier function to each entry in the data
+                func, column = modifier
+                for entry in data:
+                    if column in entry:
+                        entry[column] = func(entry[column])
+            else:
+                # If the modifier is not a tuple, assume it's a single function and apply it to the entire data
+                data = modifier(data)
+        except:
+            logger.warning(
+                f"Error occurred in modifier: {modifier.__name__ if callable(modifier) else modifier}"
+            )
+            logger.warning(f"Error in entry: {entry}")
 
     return data
 

@@ -1,11 +1,14 @@
 from components.input import process_hanja_txt
 from utils.csv import export_to_csv
+from utils.hanja_tool import format_num_to_hanja_rank
+from functools import partial
 
 
-def lowercase_unicode_modifier(data):
+def lowercase_modifier(data, column):
     for entry in data:
-        if "unicode" in entry:
-            entry["unicode"] = entry["unicode"].lower()
+        if column in entry:
+            entry[column] = entry[column].lower()
+            # if there is no column found, raise error
     return data
 
 
@@ -14,11 +17,14 @@ result = process_hanja_txt(
     patterns=[
         "(?P<hanja>[\w]):?(?P<simplified_char>[\w])?",
         "(?P<meaning>[\w\s.;]+)",
-        "(?P<grade>[\w]+)/(?P<reference_idx>[\w]+)",
+        "(?P<rank>[\d.]+)/(?P<reference_idx>[\w]+)",
         ("(?P<words>.*)", "."),
     ],
-    entry_list="hanja|simplified_char|meaning|meaning_official|radical|stroke_count|formation_letter|grade|unicode|reference_idx",
-    hanja_modifiers=[lowercase_unicode_modifier],
+    entry_list="hanja|simplified_char|meaning|meaning_official|radical|stroke_count|formation_letter|rank|unicode|reference_idx",
+    hanja_modifiers=[
+        partial(lowercase_modifier, column="unicode"),
+        (format_num_to_hanja_rank, "rank"),
+    ],
     words_modifiers=[],
 )
 
