@@ -250,7 +250,13 @@ def export_word_csv_data(word_data, filename=None):
     return filename
 
 
-def scrape_word(criteria_hanja, word_list, instant_csv=False, selenium_driver=None):
+def scrape_word(
+    criteria_hanja,
+    word_list,
+    reference_idx=None,
+    instant_csv=False,
+    selenium_driver=None,
+):
     """
     Scrape word data for a list of Korean words associated with a Hanja character.
 
@@ -301,6 +307,7 @@ def scrape_word(criteria_hanja, word_list, instant_csv=False, selenium_driver=No
                 word_item = {
                     **word_item,
                     **fetch_word_data(word_item["word_id"], browser),
+                    "reference_idx": reference_idx,
                 }
                 word_data.append(word_item)
 
@@ -329,10 +336,11 @@ def scrape_multiple_words(word_objs, instant_csv=False):
         word_data_list = []
         csv_filename = None
 
-        for criteria_hanja, word_list in word_objs:
+        for word_obj in word_objs:
             word_data = scrape_word(
-                criteria_hanja,
-                word_list,
+                word_obj["hanja"],
+                word_obj["words"],
+                word_obj["reference_idx"],
                 selenium_driver=browser,
             )
             word_data_list.extend(word_data)

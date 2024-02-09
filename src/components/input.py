@@ -75,34 +75,7 @@ def process_txt_file(file_path, patterns, delimiter="\n\n"):
     return processed_data
 
 
-def merge_data_into_dict(entry_dict, input_data, scrapped_hanja):
-    """
-    Merge input data and scrapped hanja data into a list of dictionaries.
-
-    Args:
-        entry_dict (dict): A dictionary representing the structure of the entries.
-        input_data (list): List of dictionaries containing input data.
-        scrapped_hanja (list): List of dictionaries containing scrapped hanja data.
-
-    Returns:
-        list: List of dictionaries containing merged data.
-    """
-    result = []
-
-    for input_entry, scrapped_entry in zip(input_data, scrapped_hanja):
-        hanja = input_entry["hanja"]
-        merged_dict = {"hanja": hanja}
-
-        # Merge data from input and scrapped hanja entries
-        for key in entry_dict:
-            merged_dict[key] = input_entry.get(key, scrapped_entry.get(key, None))
-
-        result.append(merged_dict)
-
-    return result
-
-
-def scrape_data(input_data, entry_dict):
+def scrape_data(input_data):
     """
     Scrape additional data using the input data.
 
@@ -117,16 +90,12 @@ def scrape_data(input_data, entry_dict):
 
     # Scrape hanja data using input hanja entries
     scrapped_hanja = scrape_hanja([entry["hanja"] for entry in input_data])
-
-    # Scrape words data using input hanja and words entries
-    scrapped_words = scrape_multiple_words(
-        [(input_entry["hanja"], input_entry["words"]) for input_entry in input_data]
-    )
+    # Create Anki Tags
 
     # Merge input data with scraped hanja data
-    hanja_data = merge_data_into_dict(entry_dict, input_data, scrapped_hanja)
+    hanja_data = merge_list_of_dicts(input_data, scrapped_hanja)
 
-    return hanja_data, scrapped_words
+    return hanja_data
 
 
 def apply_modifiers(data, modifiers):
@@ -157,17 +126,51 @@ def apply_modifiers(data, modifiers):
             else:
                 # If the modifier is not a tuple, assume it's a single function and apply it to the entire data
                 data = modifier(data)
-        except:
+        except Exception as e:
             logger.warning(
-                f"Error occurred in modifier: {modifier.__name__ if callable(modifier) else modifier}"
+                f"Error occurred in modifier: {modifier.__name__ if callable(modifier) else modifier}, {e}"
             )
             logger.warning(f"Error in entry: {entry}")
 
     return data
 
 
+def merge_list_of_dicts(data1, data2):
+    merged_list = []
+
+    for entry1, entry2 in zip(data1, data2):
+        merged_dict = entry1.copy()
+
+        for key, value in entry2.items():
+            if key in merged_dict:
+                if isinstance(merged_dict[key], list):
+                    merged_dict[key] = merged_dict[key][0]
+                else:
+                    merged_dict[key] = value
+            else:
+                merged_dict[key] = value
+        merged_list.append(merged_dict)
+
+    return merged_list
+
+
+def arrange_dict_order(data, key_order):
+    arranged_data = []
+
+    for entry in data:
+        new_entry = {key: entry[key] for key in key_order if key in entry}
+        arranged_data.append(new_entry)
+
+    return arranged_data
+
+
 def process_hanja_txt(
-    file_path, patterns, entry_list, hanja_modifiers=None, words_modifiers=None
+    file_path,
+    patterns,
+    hanja_entry,
+    word_entry,
+    hanja_modifiers=None,
+    words_modifiers=None,
 ):
     """
     Process a text file, extract and merge data, and apply modifiers.
@@ -183,7 +186,8 @@ def process_hanja_txt(
     """
 
     # Create a dictionary with entry keys initialized to None
-    entry_dict = {key: None for key in entry_list.split("|")}
+    hanja_entry = {key: None for key in hanja_entry.split("|")}
+    word_entry = {key: None for key in word_entry.split("|")}
 
     # Read the text file, extract information based on patterns, and store in a list of dictionaries
     input_hanja = process_txt_file(
@@ -194,10 +198,14 @@ def process_hanja_txt(
     ## Before Scrapping, check hanja is stored in DB
 
     # Scrape additional data using the input data and entry dictionary
-    hanja_data, scrapped_words = scrape_data(input_hanja, entry_dict)
-
-    # Apply modifiers at the end
+    hanja_data = scrape_data(input_hanja)
     hanja_data = apply_modifiers(hanja_data, hanja_modifiers)
+
+    # Scrape words data using input hanja and words entries
+    scrapped_words = scrape_multiple_words(hanja_data)
     scrapped_words = apply_modifiers(scrapped_words, words_modifiers)
+
+    hanja_data = arrange_dict_order(hanja_data, hanja_entry)
+    scrapped_words = arrange_dict_order(scrapped_words, word_entry)
 
     return (hanja_data, scrapped_words)
