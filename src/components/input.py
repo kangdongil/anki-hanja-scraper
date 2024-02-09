@@ -2,6 +2,7 @@ import os, re
 from components.hanja import scrape_hanja
 from components.word import scrape_multiple_words
 from utils.logger import logger
+from utils.anki_utils import create_anki_tags
 
 
 def parse_data_by_regex(data, patterns):
@@ -53,21 +54,24 @@ def process_txt_file(file_path, patterns, delimiter="\n\n"):
     Args:
         file_path (str): The path to the text file.
         patterns (list): List of patterns for extracting information.
+        delimiter (str, optional): The delimiter used to split the content of the file. Defaults to "\n\n".
 
     Returns:
         list: List of dictionaries containing processed data.
     """
+    # Check if file path is relative, if so, join it with default input directory
     if not file_path.startswith("data/input/"):
         file_path = os.path.join("data/input", file_path)
 
+    # Read txt file in UTF-8
     with open(file_path, "r", encoding="utf-8") as file:
         content = file.read()
 
-    # Split content into chunks based on double newline
+    # Split content into chunks based on delimiter
     chunks = content.split(delimiter)
     processed_data = []
 
-    # Process each chunk and extract data into dictionaries
+    # Process each chunk and extract data into dictionaries using specified patterns
     for chunk in chunks:
         entry = parse_data_by_regex(chunk, patterns)
         processed_data.append(entry)
@@ -81,11 +85,11 @@ def scrape_data(input_data):
 
     Args:
         input_data (list): List of dictionaries containing input data.
-        entry_dict (dict): A dictionary representing the structure of the entries.
 
     Returns:
-        tuple: A tuple containing scraped hanja and words data.
+        list: A list of dictionaries containing merged input data with scraped data.
     """
+
     ## Before Scrapping, check hanja is stored in DB
 
     # Scrape hanja data using input hanja entries
@@ -136,6 +140,16 @@ def apply_modifiers(data, modifiers):
 
 
 def merge_list_of_dicts(data1, data2):
+    """
+    Merge two lists of dictionaries.
+
+    Args:
+        data1 (list): The first list of dictionaries.
+        data2 (list): The second list of dictionaries.
+
+    Returns:
+        list: A list containing merged dictionaries.
+    """
     merged_list = []
 
     for entry1, entry2 in zip(data1, data2):
@@ -155,9 +169,20 @@ def merge_list_of_dicts(data1, data2):
 
 
 def arrange_dict_order(data, key_order):
+    """
+    Arrange the order of keys in dictionaries in a list.
+
+    Args:
+        data (list): The list of dictionaries to be arranged.
+        key_order (list): The desired order of keys.
+
+    Returns:
+        list: A list of dictionaries with keys arranged according to key_order.
+    """
     arranged_data = []
 
     for entry in data:
+        # Create a new dictionary with keys arranged according to key_order
         new_entry = {key: entry[key] for key in key_order if key in entry}
         arranged_data.append(new_entry)
 
@@ -178,18 +203,20 @@ def process_hanja_txt(
     Args:
         file_path (str): The path to the text file.
         patterns (list): List of patterns for extracting information.
-        entry_list (str): Pipe-separated list of entry keys.
-        modifiers (list): List of modifier functions.
+        hanja_entry (str): Pipe-separated list of entry keys.
+        word_entry (str): Pipe-separated list of entry keys for words.
+        hanja_modifiers (list, optional): List of modifier functions for hanja data.
+        words_modifiers (list, optional): List of modifier functions for words data.
 
     Returns:
-        tuple: A tuple containing hanja and words data after applying modifiers.
+        tuple: A tuple containing processed hanja and words data.
     """
 
-    # Create a dictionary with entry keys initialized to None
+    # Initialize dictionaries for hanja and words entry keys
     hanja_entry = {key: None for key in hanja_entry.split("|")}
     word_entry = {key: None for key in word_entry.split("|")}
 
-    # Read the text file, extract information based on patterns, and store in a list of dictionaries
+    # Read the text file and extract information based on patterns
     input_hanja = process_txt_file(
         file_path=file_path,
         patterns=patterns,
@@ -197,14 +224,25 @@ def process_hanja_txt(
 
     ## Before Scrapping, check hanja is stored in DB
 
-    # Scrape additional data using the input data and entry dictionary
+    # Scraping additional data and applying modifiers for hanja data
     hanja_data = scrape_data(input_hanja)
     hanja_data = apply_modifiers(hanja_data, hanja_modifiers)
+    hanja_data = create_anki_tags(
+        data=hanja_data,
+        tag_template="{{'{}': ['{}', {{'{}': '{}'}}]}}",
+        values=("漢字", "{rank}", "暗記博士1", "{reference_idx}"),
+    )
 
-    # Scrape words data using input hanja and words entries
+    # Scraping words data and applying modifiers
     scrapped_words = scrape_multiple_words(hanja_data)
     scrapped_words = apply_modifiers(scrapped_words, words_modifiers)
+    scrapped_words = create_anki_tags(
+        data=scrapped_words,
+        tag_template="{{'{}': {{'{}': '{}'}}}}",
+        values=("漢字語", "暗記博士1", "{reference_idx}"),
+    )
 
+    # Arrange dictionary order for hanja and words data
     hanja_data = arrange_dict_order(hanja_data, hanja_entry)
     scrapped_words = arrange_dict_order(scrapped_words, word_entry)
 

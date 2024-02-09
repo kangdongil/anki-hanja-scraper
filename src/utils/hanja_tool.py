@@ -1,3 +1,4 @@
+import re
 import urllib.parse
 
 hanja_ranges = [
@@ -104,3 +105,24 @@ def format_num_to_hanja_rank(value):
             return f"{int(value)}級II"
 
     raise ValueError("Invalid value for Hanja Rank")
+
+
+def add_sup_word_index(word):
+    """Add <sup> tag for word index."""
+    match = re.match(r"(\w+) (\d+)", word)
+    if match:
+        return f"{match.group(1)}<sup>{match.group(2)}</sup>"
+    else:
+        return word
+
+
+def add_numbering_to_list(input_list):
+    """Add numbering to each item in a list."""
+    numbered_list = ["{}. {}".format(i + 1, item) for i, item in enumerate(input_list)]
+    return numbered_list
+
+
+def create_unordered_list(input_list):
+    """Create an unordered list from a given list of items."""
+    unordered_list = ["- {}".format(item) for item in input_list]
+    return unordered_list
