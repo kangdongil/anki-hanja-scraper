@@ -41,7 +41,7 @@ def match_word_to_hanja(hanja, word, browser):
         # Check if the meaning matches the word
         candid_name = candid.find_element(By.CSS_SELECTOR, ".mean").text
         if candid_name != word:
-            break
+            continue
 
         # Extract Hanja and Korean word pairs
         wordhanja = candid.find_element(By.CSS_SELECTOR, ".origin a").text
@@ -337,18 +337,19 @@ def scrape_multiple_words(word_objs, instant_csv=False):
         csv_filename = None
 
         for word_obj in word_objs:
-            word_data = scrape_word(
-                word_obj["hanja"],
-                word_obj["words"],
-                word_obj["reference_idx"],
-                selenium_driver=browser,
-            )
-            word_data_list.extend(word_data)
-            if instant_csv:
-                if not csv_filename:
-                    csv_filename = export_word_csv_data(word_data)
-                else:
-                    export_word_csv_data(word_data, csv_filename)
+            if word_obj["words"][0] != "_":
+                word_data = scrape_word(
+                    word_obj["hanja"],
+                    word_obj["words"],
+                    word_obj["reference_idx"],
+                    selenium_driver=browser,
+                )
+                word_data_list.extend(word_data)
+                if instant_csv:
+                    if not csv_filename:
+                        csv_filename = export_word_csv_data(word_data)
+                    else:
+                        export_word_csv_data(word_data, csv_filename)
     return word_data_list
 
 
